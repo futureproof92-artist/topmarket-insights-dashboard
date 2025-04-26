@@ -1,43 +1,31 @@
 
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import LoginPage from './LoginPage';
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserSelectionGrid } from '@/components/auth/UserSelectionGrid';
 
 const Index = () => {
-  const navigate = useNavigate();
-  
-  useEffect(() => {
-    // Verificamos si hay un usuario guardado en localStorage
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      
-      // Redirección basada en rol
-      switch(user.role) {
-        case 'evelyn':
-          navigate('/ventas');
-          break;
-        case 'davila':
-          navigate('/pxr-cerrados');
-          break;
-        case 'lilia':
-          navigate('/hh-cerrados');
-          break;
-        case 'nataly':
-          navigate('/cobranza');
-          break;
-        case 'admin':
-          navigate('/admin');
-          break;
-        default:
-          // Si no hay rol válido, se queda en la página de login
-          break;
-      }
-    }
-  }, [navigate]);
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 bg-background">
+      <div className="w-full max-w-6xl space-y-8">
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold text-primary">TopMarket</h1>
+          <p className="text-xl text-muted-foreground">Dashboard de Reportes y Gastos</p>
+        </div>
 
-  return <LoginPage />;
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Selecciona tu perfil</CardTitle>
+            <CardDescription>
+              Cada módulo requiere credenciales específicas
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UserSelectionGrid />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 };
 
 export default Index;

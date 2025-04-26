@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import UserLoginPage from "./pages/auth/UserLoginPage";
 import VentasPage from "./pages/dashboard/VentasPage";
 import PxrCerradosPage from "./pages/dashboard/PxrCerradosPage";
 import HhCerradosPage from "./pages/dashboard/HhCerradosPage";
@@ -24,6 +24,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login/:role" element={<UserLoginPage />} />
           <Route path="/ventas" element={<VentasPage />} />
           <Route path="/prospecciones" element={<VentasPage />} />
           <Route path="/pxr-cerrados" element={<PxrCerradosPage />} />
