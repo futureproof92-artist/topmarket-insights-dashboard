@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -151,14 +150,14 @@ const VentasPage = () => {
           id: '1',
           cliente: 'Empresa ABC',
           ubicacion: 'CDMX',
-          tipo_servicio: 'PXR',
+          tipo_servicio: 'PXR' as const,
           costo_unitario: 5000,
           total_vacs: 2
         }, {
           id: '2',
           cliente: 'Corporativo XYZ',
           ubicacion: 'Monterrey',
-          tipo_servicio: 'HH',
+          tipo_servicio: 'HH' as const,
           costo_unitario: 7500,
           total_vacs: 1
         }]
@@ -176,14 +175,14 @@ const VentasPage = () => {
           id: '3',
           cliente: 'Servicios Globales',
           ubicacion: 'CDMX',
-          tipo_servicio: 'OTRO',
+          tipo_servicio: 'OTRO' as const,
           costo_unitario: 6200,
           total_vacs: 1
         }, {
           id: '4',
           cliente: 'Empresa ABC',
           ubicacion: 'CDMX',
-          tipo_servicio: 'PXR',
+          tipo_servicio: 'PXR' as const,
           costo_unitario: 4800,
           total_vacs: 3
         }]
@@ -201,14 +200,14 @@ const VentasPage = () => {
           id: '5',
           cliente: 'TechStart',
           ubicacion: 'Guadalajara',
-          tipo_servicio: 'HH',
+          tipo_servicio: 'HH' as const,
           costo_unitario: 8000,
           total_vacs: 2
         }, {
           id: '6',
           cliente: 'Innovación Digital',
           ubicacion: 'Monterrey',
-          tipo_servicio: 'PXR',
+          tipo_servicio: 'PXR' as const,
           costo_unitario: 5500,
           total_vacs: 3
         }]
