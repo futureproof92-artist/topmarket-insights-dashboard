@@ -24,13 +24,13 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
   const handleSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
 
-    // Verificación de credenciales (simulada por ahora)
+    // Credenciales de acceso seguras
     const credentials = {
-      'evelyn@topmarket.com': 'TM#Evelyn2024',
-      'davila@topmarket.com': 'TM#Davila2024',
-      'lilia@topmarket.com': 'TM#Lilia2024',
-      'nataly@topmarket.com': 'TM#Karla2024',
-      'admin@topmarket.com': 'TM#Admin2024'
+      'e.matheus@topmarket.com': 'jeifnAHE3HSB3',
+      'reclutamiento@topmarket.com': 'TMkc73ndj2b',
+      'davila@topmarket.com': 'iHFUnd838nx',
+      'lilia@topmarket.com': 'Th8F82Nbd',
+      'admin@topmarket.com': 'fk_2024_254_satg_280324'
     };
 
     if (credentials[values.email as keyof typeof credentials] === values.password) {
