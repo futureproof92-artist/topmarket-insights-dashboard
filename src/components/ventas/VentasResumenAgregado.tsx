@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { VentaDetalle } from '@/pages/dashboard/VentasPage';
 import { format, differenceInDays, differenceInWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 
 interface LeadsData {
   leads_pub_em: number;
@@ -22,20 +23,19 @@ interface HistorialItem {
 
 interface VentasResumenAgregadoProps {
   historial: HistorialItem[];
-  dateRange?: {
-    from: Date;
-    to: Date;
-  };
+  dateRange?: DateRange; // Updated to use DateRange from react-day-picker
 }
 
 export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgregadoProps) => {
   // Calcular periodo seleccionado
   const periodoSeleccionado = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) {
+    if (!dateRange?.from) {
       return `${historial.length} semanas seleccionadas`;
     }
-
-    const days = differenceInDays(dateRange.to, dateRange.from) + 1;
+    
+    // If to is not defined, use from as the end date for calculations
+    const endDate = dateRange.to || dateRange.from;
+    const days = differenceInDays(endDate, dateRange.from) + 1;
     const totalWeeks = Math.ceil(days / 7);
     
     if (totalWeeks <= 4) {
@@ -45,7 +45,7 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
     } else if (totalWeeks <= 13) {
       return `Aproximadamente 3 meses seleccionados`;
     } else {
-      return `${format(dateRange.from, "d MMM yyyy", { locale: es })} al ${format(dateRange.to, "d MMM yyyy", { locale: es })}`;
+      return `${format(dateRange.from, "d MMM yyyy", { locale: es })} al ${format(endDate, "d MMM yyyy", { locale: es })}`;
     }
   }, [dateRange, historial.length]);
 
