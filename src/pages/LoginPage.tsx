@@ -90,7 +90,7 @@ const LoginPage = () => {
               Para demostración, usa los correos asignados:<br />
               dcomercial@topmarket.com.mx, rys_cdmx@topmarket.com.mx,<br />
               rlaboral@topmarket.com.com.mx, administracion@topmarket.com.mx,<br />
-              sergio.t@topmarket.com, reclutamiento@topmarket.com.mx
+              sergio.t@topmarket.com.mx, reclutamiento@topmarket.com.mx
             </div>
           </CardFooter>
         </Card>

@@ -30,7 +30,7 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
       'reclutamiento@topmarket.com.mx': 'TMkc73ndj2b',
       'rys_cdmx@topmarket.com.mx': 'iHFUnd838nx',
       'rlaboral@topmarket.com.com.mx': 'Th8F82Nbd',
-      'sergio.t@topmarket.com': 'fk_2024_254_satg_280324',
+      'sergio.t@topmarket.com.mx': 'fk_2024_254_satg_280324',
       'administracion@topmarket.com.mx': 'iE74nuy!jd'
     };
 
