@@ -19,6 +19,12 @@ const users: UserOption[] = [
     path: "/login/evelyn"
   },
   {
+    name: "Karla Casillas",
+    role: "nataly",
+    description: "Nuevo Personal Reclutamiento",
+    path: "/login/nataly"
+  },
+  {
     name: "Gaby Davila",
     role: "davila",
     description: "PXR Cerrados",
@@ -31,10 +37,10 @@ const users: UserOption[] = [
     path: "/login/lilia"
   },
   {
-    name: "Karla Casillas",
-    role: "nataly",
+    name: "Nataly Zarate",
+    role: "cobranza",
     description: "Cobranza",
-    path: "/login/nataly"
+    path: "/login/cobranza"
   },
   {
     name: "Sergio Tellez",

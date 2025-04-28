@@ -30,7 +30,8 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
       'reclutamiento@topmarket.com': 'TMkc73ndj2b',
       'davila@topmarket.com': 'iHFUnd838nx',
       'lilia@topmarket.com': 'Th8F82Nbd',
-      'admin@topmarket.com': 'fk_2024_254_satg_280324'
+      'admin@topmarket.com': 'fk_2024_254_satg_280324',
+      'administracion@topmarket.com.mx': 'IRFhd83IVA'
     };
 
     if (credentials[values.email as keyof typeof credentials] === values.password) {
