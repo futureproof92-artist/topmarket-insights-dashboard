@@ -1,14 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
-import { addDays, startOfWeek, format, getDay, parse } from 'date-fns';
+import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { LeadsForm } from '@/components/ventas/LeadsForm';
 import { VentasDetalleForm } from '@/components/ventas/VentasDetalleForm';
 import { HistorialSemanal } from '@/components/ventas/HistorialSemanal';
+import { VentasResumenAgregado } from '@/components/ventas/VentasResumenAgregado';
+import { DateRangeSelector } from '@/components/ventas/DateRangeSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { DateRange } from 'react-day-picker';
 
 // Tipo para la semana seleccionada
 interface WeekRange {
@@ -35,15 +39,23 @@ export interface VentaDetalle {
   costo_unitario: number;
   total_vacs: number;
 }
+
 const VentasPage = () => {
   const [user, setUser] = useState<{
     role: string;
     email: string;
   } | null>(null);
+  
   const [currentWeek, setCurrentWeek] = useState<WeekRange>(() => {
     // Iniciar con la semana actual
     const now = new Date();
     return getWeekRange(now);
+  });
+
+  // Estado para el rango de fechas (para admin)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfWeek(new Date(), { weekStartsOn: 1 }),
+    to: addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 28)
   });
 
   // Datos de leads para la semana actual
@@ -57,6 +69,9 @@ const VentasPage = () => {
 
   // Detalle de ventas para la semana actual
   const [ventasDetalle, setVentasDetalle] = useState<VentaDetalle[]>([]);
+
+  // Estado para determinar si el usuario es administrador
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Historial mockup - en una implementación real esto vendría de backend
   const [historialSemanas, setHistorialSemanas] = useState<{
@@ -95,16 +110,114 @@ const VentasPage = () => {
       total_vacs: 3
     }]
   }]);
+  
+  // Historial filtrado según el rango de fechas para admin
+  const [historialFiltrado, setHistorialFiltrado] = useState<typeof historialSemanas>([]);
+  
   useEffect(() => {
     // Obtener el usuario del localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      
+      // Verificar si es admin
+      setIsAdmin(parsedUser.role === 'admin' || parsedUser.email?.includes('sergio.t@topmarket.com.mx'));
     }
 
     // Actualizar ventasDetalle basado en el número de ventas_cerradas
     updateVentasDetalleRows(leadsData.ventas_cerradas);
   }, []);
+  
+  // Efecto para filtrar el historial según el rango de fechas para admin
+  useEffect(() => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    
+    // Aquí simularemos que filtramos el historial según el rango
+    // En una implementación real, haríamos una llamada a la API
+    
+    // Por ahora, agregamos algunos datos mock adicionales para mostrar la funcionalidad
+    const semanasMock = [
+      {
+        semana: 'Lun 21 de Abr 2025 – Vie 25 de Abr 2025',
+        leads: {
+          leads_pub_em: 15,
+          leads_pub_cl: 8,
+          leads_frio_em: 12,
+          leads_frio_cl: 5,
+          ventas_cerradas: 3
+        },
+        ventasDetalle: [{
+          id: '1',
+          cliente: 'Empresa ABC',
+          ubicacion: 'CDMX',
+          tipo_servicio: 'PXR',
+          costo_unitario: 5000,
+          total_vacs: 2
+        }, {
+          id: '2',
+          cliente: 'Corporativo XYZ',
+          ubicacion: 'Monterrey',
+          tipo_servicio: 'HH',
+          costo_unitario: 7500,
+          total_vacs: 1
+        }]
+      },
+      {
+        semana: 'Lun 28 de Abr 2025 – Vie 2 de May 2025',
+        leads: {
+          leads_pub_em: 10,
+          leads_pub_cl: 6,
+          leads_frio_em: 8,
+          leads_frio_cl: 4,
+          ventas_cerradas: 2
+        },
+        ventasDetalle: [{
+          id: '3',
+          cliente: 'Servicios Globales',
+          ubicacion: 'CDMX',
+          tipo_servicio: 'OTRO',
+          costo_unitario: 6200,
+          total_vacs: 1
+        }, {
+          id: '4',
+          cliente: 'Empresa ABC',
+          ubicacion: 'CDMX',
+          tipo_servicio: 'PXR',
+          costo_unitario: 4800,
+          total_vacs: 3
+        }]
+      },
+      {
+        semana: 'Lun 5 de May 2025 – Vie 9 de May 2025',
+        leads: {
+          leads_pub_em: 18,
+          leads_pub_cl: 9,
+          leads_frio_em: 14,
+          leads_frio_cl: 7,
+          ventas_cerradas: 5
+        },
+        ventasDetalle: [{
+          id: '5',
+          cliente: 'TechStart',
+          ubicacion: 'Guadalajara',
+          tipo_servicio: 'HH',
+          costo_unitario: 8000,
+          total_vacs: 2
+        }, {
+          id: '6',
+          cliente: 'Innovación Digital',
+          ubicacion: 'Monterrey',
+          tipo_servicio: 'PXR',
+          costo_unitario: 5500,
+          total_vacs: 3
+        }]
+      }
+    ];
+    
+    setHistorialFiltrado(semanasMock);
+    
+  }, [dateRange]);
 
   // Función para calcular el rango de semana a partir de una fecha
   function getWeekRange(date: Date): WeekRange {
@@ -213,50 +326,86 @@ const VentasPage = () => {
     // Mostrar notificación de éxito (en una implementación real)
     alert('Datos guardados correctamente');
   };
+
+  // Manejar cambio en el rango de fechas (para admin)
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+  };
+
   if (!user) {
     return <div>Cargando...</div>;
   }
-  return <AppShell user={user}>
-      <div className="space-y-6">
-        {/* Selector de Semana */}
-        <div className="flex items-center justify-between border p-4 rounded-md bg-slate-700">
-          <Button variant="outline" size="icon" onClick={prevWeek}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          
-          <h2 className="text-lg font-semibold">
-            {currentWeek.displayText}
-          </h2>
-          
-          <Button variant="outline" size="icon" onClick={nextWeek}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
 
-        <Tabs defaultValue="registro" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="registro">Registro Semanal</TabsTrigger>
-            <TabsTrigger value="historial">Historial</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="registro" className="space-y-4">
-            {/* Formulario de Leads */}
-            <LeadsForm leadsData={leadsData} onLeadsChange={handleLeadsChange} />
+  return (
+    <AppShell user={user}>
+      <div className="space-y-6">
+        {isAdmin ? (
+          // Vista para administradores con selector de fechas por rango
+          <div className="space-y-6">
+            <h1 className="text-2xl font-bold">Panel de Ventas (Eve)</h1>
+            <DateRangeSelector dateRange={dateRange} onDateRangeChange={handleDateRangeChange} />
             
-            {/* Formulario de Detalle de Ventas */}
-            {leadsData.ventas_cerradas > 0 && <VentasDetalleForm ventasDetalle={ventasDetalle} onVentaDetalleChange={handleVentaDetalleChange} />}
-            
-            {/* Botón de guardar */}
-            <Button className="w-full mt-4 bg-topmarket hover:bg-topmarket/90" onClick={handleSaveWeekData}>
-              Guardar Información Semanal
-            </Button>
-          </TabsContent>
-          
-          <TabsContent value="historial">
-            <HistorialSemanal historial={historialSemanas} />
-          </TabsContent>
-        </Tabs>
+            <Tabs defaultValue="resumen" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="resumen">Resumen Agregado</TabsTrigger>
+                <TabsTrigger value="detalle">Detalle Semanal</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="resumen">
+                <VentasResumenAgregado historial={historialFiltrado} />
+              </TabsContent>
+              
+              <TabsContent value="detalle">
+                <HistorialSemanal historial={historialFiltrado} />
+              </TabsContent>
+            </Tabs>
+          </div>
+        ) : (
+          // Vista normal para usuarios no administradores
+          <>
+            {/* Selector de Semana */}
+            <div className="flex items-center justify-between border p-4 rounded-md bg-slate-700">
+              <Button variant="outline" size="icon" onClick={prevWeek}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              
+              <h2 className="text-lg font-semibold">
+                {currentWeek.displayText}
+              </h2>
+              
+              <Button variant="outline" size="icon" onClick={nextWeek}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <Tabs defaultValue="registro" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="registro">Registro Semanal</TabsTrigger>
+                <TabsTrigger value="historial">Historial</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="registro" className="space-y-4">
+                {/* Formulario de Leads */}
+                <LeadsForm leadsData={leadsData} onLeadsChange={handleLeadsChange} />
+                
+                {/* Formulario de Detalle de Ventas */}
+                {leadsData.ventas_cerradas > 0 && <VentasDetalleForm ventasDetalle={ventasDetalle} onVentaDetalleChange={handleVentaDetalleChange} />}
+                
+                {/* Botón de guardar */}
+                <Button className="w-full mt-4 bg-topmarket hover:bg-topmarket/90" onClick={handleSaveWeekData}>
+                  Guardar Información Semanal
+                </Button>
+              </TabsContent>
+              
+              <TabsContent value="historial">
+                <HistorialSemanal historial={historialSemanas} />
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </div>
-    </AppShell>;
+    </AppShell>
+  );
 };
+
 export default VentasPage;
