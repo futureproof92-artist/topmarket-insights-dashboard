@@ -13,14 +13,12 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 
-// Tipo para la semana seleccionada
 interface WeekRange {
   startDate: Date;
   endDate: Date;
   displayText: string;
 }
 
-// Tipos para leads
 interface LeadsData {
   leads_pub_em: number;
   leads_pub_cl: number;
@@ -29,7 +27,6 @@ interface LeadsData {
   ventas_cerradas: number;
 }
 
-// Tipos para detalle de ventas
 export interface VentaDetalle {
   id: string;
   cliente: string;
@@ -112,7 +109,7 @@ const VentasPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!dateRange?.from || !dateRange?.to) return;
+    if (!dateRange?.from) return;
     
     const semanasMock = [
       {
@@ -189,8 +186,67 @@ const VentasPage = () => {
           costo_unitario: 5500,
           total_vacs: 3
         }]
+      },
+      {
+        semana: 'Lun 12 de May 2025 – Vie 16 de May 2025',
+        leads: {
+          leads_pub_em: 20,
+          leads_pub_cl: 12,
+          leads_frio_em: 16,
+          leads_frio_cl: 9,
+          ventas_cerradas: 4
+        },
+        ventasDetalle: [{
+          id: '7',
+          cliente: 'Consultora TechPro',
+          ubicacion: 'Puebla',
+          tipo_servicio: 'HH' as const,
+          costo_unitario: 7000,
+          total_vacs: 4
+        }, {
+          id: '8',
+          cliente: 'Servicios Globales',
+          ubicacion: 'CDMX',
+          tipo_servicio: 'OTRO' as const,
+          costo_unitario: 6500,
+          total_vacs: 2
+        }]
+      },
+      {
+        semana: 'Lun 19 de May 2025 – Vie 23 de May 2025',
+        leads: {
+          leads_pub_em: 22,
+          leads_pub_cl: 14,
+          leads_frio_em: 18,
+          leads_frio_cl: 10,
+          ventas_cerradas: 6
+        },
+        ventasDetalle: [{
+          id: '9',
+          cliente: 'Empresa ABC',
+          ubicacion: 'CDMX',
+          tipo_servicio: 'PXR' as const,
+          costo_unitario: 5200,
+          total_vacs: 3
+        }, {
+          id: '10',
+          cliente: 'TechStart',
+          ubicacion: 'Guadalajara',
+          tipo_servicio: 'HH' as const,
+          costo_unitario: 8500,
+          total_vacs: 1
+        }, {
+          id: '11',
+          cliente: 'Corporativo XYZ',
+          ubicacion: 'Monterrey',
+          tipo_servicio: 'PXR' as const,
+          costo_unitario: 7200,
+          total_vacs: 2
+        }]
       }
     ];
+    
+    console.log("Filtrando datos por rango de fechas:", dateRange);
     
     setHistorialFiltrado(semanasMock);
     

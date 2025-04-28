@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { VentaDetalle } from '@/pages/dashboard/VentasPage';
-import { format, differenceInDays, differenceInWeeks } from 'date-fns';
+import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 
@@ -64,6 +64,10 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
 
     // Acumular todas las ventas
     const todasLasVentas: VentaDetalle[] = [];
+
+    // Logging para depuración
+    console.log("Filtrando datos por rango de fecha:", dateRange);
+    console.log("Datos históricos disponibles:", historial.length, "semanas");
 
     historial.forEach(item => {
       // Sumar leads
