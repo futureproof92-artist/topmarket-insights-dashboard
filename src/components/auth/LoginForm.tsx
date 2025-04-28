@@ -19,10 +19,16 @@ interface LoginFormValues {
 export const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const form = useForm<LoginFormValues>();
+  const form = useForm<LoginFormValues>({
+    defaultValues: {
+      email: '',
+      password: ''
+    }
+  });
 
   const handleSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
+    console.log("Intentando acceder con:", values.email, values.password);
 
     // Credenciales de acceso seguras
     const credentials = {
@@ -34,13 +40,20 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
       'administracion@topmarket.com.mx': 'iE74nuy!jd'
     };
 
-    if (credentials[values.email as keyof typeof credentials] === values.password) {
+    // Verificar credenciales insensibles a mayúsculas/minúsculas para el email
+    const normalizedEmail = values.email.toLowerCase().trim();
+    const userCredential = Object.entries(credentials).find(([email]) => 
+      email.toLowerCase() === normalizedEmail
+    );
+
+    if (userCredential && userCredential[1] === values.password) {
       toast({
         title: "Acceso exitoso",
         description: "Bienvenido/a a TopMarket",
       });
-      onLogin(values.email, values.password);
+      onLogin(userCredential[0], values.password);
     } else {
+      console.log("Credenciales incorrectas");
       toast({
         title: "Error de acceso",
         description: "Credenciales incorrectas",
