@@ -63,7 +63,7 @@ export const Sidebar = ({ user, impersonatedRole, onImpersonate }: SidebarProps)
 
   // User roles for impersonation
   const userRoles = [
-    { role: 'evelyn', name: 'Evelyn Matheus', description: 'Ventas y Prospecciones' },
+    { role: 'evelyn', name: 'Eve', description: 'Ventas y Prospecciones' },
     { role: 'davila', name: 'Gaby Davila', description: 'PXR Cerrados' },
     { role: 'lilia', name: 'Lilia Morales', description: 'HH Cerrados' },
     { role: 'nataly', name: 'Nataly Zarate', description: 'Cobranza' },

@@ -60,7 +60,7 @@ function getPageTitle(role?: string): string {
 function getUserName(role: string): string {
   switch (role) {
     case 'evelyn':
-      return 'Evelyn Matheus';
+      return 'Eve';
     case 'davila':
       return 'Gaby Davila';
     case 'lilia':
