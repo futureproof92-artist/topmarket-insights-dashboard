@@ -46,16 +46,19 @@ const UserLoginPage = () => {
   const handleLogin = (email: string, password: string) => {
     console.log("Login exitoso en UserLoginPage:", email, role);
     
-    // Almacenar la información del usuario en localStorage
+    // Store user information in localStorage
     localStorage.setItem('user', JSON.stringify({ email, role }));
     
-    // Redirección específica para el administrador
+    // Clear any impersonation that might exist
+    localStorage.removeItem('impersonatedRole');
+    
+    // Specific redirection for administrator
     if (email.toLowerCase().includes('sergio.t@topmarket.com.mx') || role === 'admin') {
       navigate('/admin');
       return;
     }
     
-    // Para otros usuarios, redirección basada en email/rol
+    // For other users, redirection based on email/role
     if (email.includes('dcomercial')) {
       navigate('/ventas');
     } else if (email.includes('rys_cdmx')) {
@@ -67,7 +70,7 @@ const UserLoginPage = () => {
     } else if (email.includes('reclutamiento')) {
       navigate('/cobranza');
     } else {
-      // Fallback basado en el rol actual
+      // Fallback based on current role
       switch(role) {
         case 'evelyn':
           navigate('/ventas');
