@@ -29,26 +29,41 @@ const LoginPage = () => {
     // En una aplicación real, esto vendría del JWT
     localStorage.setItem('user', JSON.stringify({ email, role }));
     
-    // Redirección basada en rol
-    switch(role) {
-      case 'evelyn':
-        navigate('/ventas');
-        break;
-      case 'davila':
-        navigate('/pxr-cerrados');
-        break;
-      case 'lilia':
-        navigate('/hh-cerrados');
-        break;
-      case 'nataly':
-      case 'cobranza':
-        navigate('/cobranza');
-        break;
-      case 'admin':
-        navigate('/admin');
-        break;
-      default:
-        navigate('/');
+    // Redirección basada en email
+    if (email.includes('dcomercial')) {
+      navigate('/ventas');
+    } else if (email.includes('rys_cdmx')) {
+      navigate('/pxr-cerrados');
+    } else if (email.includes('rlaboral')) {
+      navigate('/hh-cerrados');
+    } else if (email.includes('administracion')) {
+      navigate('/cobranza');
+    } else if (email.includes('sergio.t')) {
+      navigate('/admin');
+    } else if (email.includes('reclutamiento')) {
+      navigate('/cobranza');
+    } else {
+      // Redirección basada en rol
+      switch(role) {
+        case 'evelyn':
+          navigate('/ventas');
+          break;
+        case 'davila':
+          navigate('/pxr-cerrados');
+          break;
+        case 'lilia':
+          navigate('/hh-cerrados');
+          break;
+        case 'nataly':
+        case 'cobranza':
+          navigate('/cobranza');
+          break;
+        case 'admin':
+          navigate('/admin');
+          break;
+        default:
+          navigate('/');
+      }
     }
   };
 

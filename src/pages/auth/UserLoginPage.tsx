@@ -44,26 +44,44 @@ const UserLoginPage = () => {
   }
 
   const handleLogin = (email: string, password: string) => {
-    // Simulación de roles basados en email
-    let targetRoute;
+    // Almacenar la información del usuario en localStorage
+    localStorage.setItem('user', JSON.stringify({ email, role }));
+    
+    // Redirección basada en rol/email
     if (email.includes('dcomercial')) {
-      targetRoute = '/ventas';
+      navigate('/ventas');
     } else if (email.includes('rys_cdmx')) {
-      targetRoute = '/pxr-cerrados';
+      navigate('/pxr-cerrados');
     } else if (email.includes('rlaboral')) {
-      targetRoute = '/hh-cerrados';
+      navigate('/hh-cerrados');
     } else if (email.includes('administracion')) {
-      targetRoute = '/cobranza';
+      navigate('/cobranza');
     } else if (email.includes('sergio.t')) {
-      targetRoute = '/admin';
+      navigate('/admin');
     } else if (email.includes('reclutamiento')) {
-      targetRoute = '/cobranza'; // Update this route if needed
-    }
-
-    if (targetRoute) {
-      // En una aplicación real, esto vendría del JWT
-      localStorage.setItem('user', JSON.stringify({ email, role }));
-      navigate(targetRoute);
+      navigate('/cobranza');
+    } else {
+      // Fallback basado en el rol actual
+      switch(role) {
+        case 'evelyn':
+          navigate('/ventas');
+          break;
+        case 'davila':
+          navigate('/pxr-cerrados');
+          break;
+        case 'lilia':
+          navigate('/hh-cerrados');
+          break;
+        case 'nataly':
+        case 'cobranza':
+          navigate('/cobranza');
+          break;
+        case 'admin':
+          navigate('/admin');
+          break;
+        default:
+          navigate('/');
+      }
     }
   };
 
