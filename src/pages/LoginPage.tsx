@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { useNavigate } from 'react-router-dom';
@@ -10,16 +10,18 @@ const LoginPage = () => {
   const handleLogin = (email: string) => {
     // Simulación de roles basados en email
     let role;
-    if (email.includes('evelyn')) {
+    if (email.includes('dcomercial')) {
       role = 'evelyn';
-    } else if (email.includes('davila')) {
+    } else if (email.includes('rys_cdmx')) {
       role = 'davila';
-    } else if (email.includes('lilia')) {
+    } else if (email.includes('rlaboral')) {
       role = 'lilia';
-    } else if (email.includes('nataly')) {
-      role = 'nataly';
-    } else if (email.includes('admin')) {
+    } else if (email.includes('administracion')) {
+      role = 'cobranza';
+    } else if (email.includes('sergio.t')) {
       role = 'admin';
+    } else if (email.includes('reclutamiento')) {
+      role = 'nataly';
     } else {
       role = 'evelyn'; // Default para pruebas
     }
@@ -39,6 +41,7 @@ const LoginPage = () => {
         navigate('/hh-cerrados');
         break;
       case 'nataly':
+      case 'cobranza':
         navigate('/cobranza');
         break;
       case 'admin':
@@ -61,7 +64,7 @@ const LoginPage = () => {
           <CardHeader>
             <CardTitle>Iniciar sesión</CardTitle>
             <CardDescription>
-              Ingresa tu correo electrónico para recibir un Magic Link
+              Ingresa tus credenciales para acceder
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -69,10 +72,10 @@ const LoginPage = () => {
           </CardContent>
           <CardFooter className="flex flex-col space-y-2">
             <div className="text-xs text-muted-foreground mt-4 text-center">
-              Para demostración, usa estos correos:<br />
-              evelyn@topmarket.com, davila@topmarket.com,<br />
-              lilia@topmarket.com, nataly@topmarket.com,<br />
-              admin@topmarket.com
+              Para demostración, usa los correos asignados:<br />
+              dcomercial@topmarket.com.mx, rys_cdmx@topmarket.com.mx,<br />
+              rlaboral@topmarket.com.com.mx, administracion@topmarket.com.mx,<br />
+              sergio.t@topmarket.com, reclutamiento@topmarket.com.mx
             </div>
           </CardFooter>
         </Card>

@@ -10,6 +10,10 @@ const getUserInfo = (role: string) => {
       name: "Evelyn Matheus",
       description: "Ventas y Prospecciones"
     },
+    nataly: {
+      name: "Karla Casillas",
+      description: "Nuevo Personal Reclutamiento"
+    },
     davila: {
       name: "Gaby Davila",
       description: "PXR Cerrados"
@@ -18,8 +22,8 @@ const getUserInfo = (role: string) => {
       name: "Lilia Morales",
       description: "HH Cerrados"
     },
-    nataly: {
-      name: "Karla Casillas",
+    cobranza: {
+      name: "Nataly Zarate",
       description: "Cobranza"
     },
     admin: {
@@ -42,16 +46,18 @@ const UserLoginPage = () => {
   const handleLogin = (email: string, password: string) => {
     // Simulación de roles basados en email
     let targetRoute;
-    if (email.includes('evelyn')) {
+    if (email.includes('dcomercial')) {
       targetRoute = '/ventas';
-    } else if (email.includes('davila')) {
+    } else if (email.includes('rys_cdmx')) {
       targetRoute = '/pxr-cerrados';
-    } else if (email.includes('lilia')) {
+    } else if (email.includes('rlaboral')) {
       targetRoute = '/hh-cerrados';
-    } else if (email.includes('nataly')) {
+    } else if (email.includes('administracion')) {
       targetRoute = '/cobranza';
-    } else if (email.includes('admin')) {
+    } else if (email.includes('sergio.t')) {
       targetRoute = '/admin';
+    } else if (email.includes('reclutamiento')) {
+      targetRoute = '/cobranza'; // Update this route if needed
     }
 
     if (targetRoute) {

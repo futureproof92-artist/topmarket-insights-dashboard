@@ -26,12 +26,12 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
 
     // Credenciales de acceso seguras
     const credentials = {
-      'e.matheus@topmarket.com': 'jeifnAHE3HSB3',
-      'reclutamiento@topmarket.com': 'TMkc73ndj2b',
-      'davila@topmarket.com': 'iHFUnd838nx',
-      'lilia@topmarket.com': 'Th8F82Nbd',
-      'admin@topmarket.com': 'fk_2024_254_satg_280324',
-      'administracion@topmarket.com.mx': 'IRFhd83IVA'
+      'dcomercial@topmarket.com.mx': 'jeifnAHE3HSB3',
+      'reclutamiento@topmarket.com.mx': 'TMkc73ndj2b',
+      'rys_cdmx@topmarket.com.mx': 'iHFUnd838nx',
+      'rlaboral@topmarket.com.com.mx': 'Th8F82Nbd',
+      'sergio.t@topmarket.com': 'fk_2024_254_satg_280324',
+      'administracion@topmarket.com.mx': 'iE74nuy!jd'
     };
 
     if (credentials[values.email as keyof typeof credentials] === values.password) {
@@ -63,7 +63,7 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
               <FormControl>
                 <Input
                   type="email"
-                  placeholder="tu@topmarket.com"
+                  placeholder="tu@topmarket.com.mx"
                   disabled={isLoading}
                   {...field}
                 />
