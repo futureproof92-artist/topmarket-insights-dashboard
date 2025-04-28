@@ -1,12 +1,12 @@
 
-import React from 'react';
-import { format, addWeeks, startOfWeek, endOfWeek } from 'date-fns';
+import React, { useState } from 'react';
+import { format, addWeeks, startOfWeek, endOfWeek, differenceInDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarDays } from 'lucide-react';
+import { CalendarRange } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DateRangeSelectorProps {
@@ -15,12 +15,53 @@ interface DateRangeSelectorProps {
 }
 
 export const DateRangeSelector = ({ dateRange, onDateRangeChange }: DateRangeSelectorProps) => {
+  // Estado para rastrear qué botón de selección rápida está activo
+  const [activeQuickSelection, setActiveQuickSelection] = useState<number | null>(null);
+  
+  // Función para calcular el texto del rango de fechas seleccionado
+  const getDateRangeText = () => {
+    if (!dateRange?.from) {
+      return "Seleccionar rango de fechas";
+    }
+    
+    if (!dateRange.to) {
+      return format(dateRange.from, "d 'de' MMMM yyyy", { locale: es });
+    }
+    
+    // Calcular semanas completas y días adicionales
+    const days = differenceInDays(dateRange.to, dateRange.from) + 1;
+    const weeks = Math.floor(days / 7);
+    const extraDays = days % 7;
+    
+    let rangeText = `${format(dateRange.from, "d MMM", { locale: es })} - ${format(dateRange.to, "d MMM yyyy", { locale: es })}`;
+    
+    // Agregar información de semanas y días entre paréntesis
+    if (weeks > 0) {
+      rangeText += ` (${weeks} ${weeks === 1 ? 'semana' : 'semanas'}`;
+      if (extraDays > 0) {
+        rangeText += ` y ${extraDays} ${extraDays === 1 ? 'día' : 'días'}`;
+      }
+      rangeText += ')';
+    } else if (days > 0) {
+      rangeText += ` (${days} ${days === 1 ? 'día' : 'días'})`;
+    }
+    
+    return rangeText;
+  };
+
   // Función para manejar selecciones rápidas
   const handleQuickSelection = (weeks: number) => {
+    setActiveQuickSelection(weeks);
     const today = new Date();
-    const from = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const from = startOfWeek(today, { weekStartsOn: 1 });
     const to = endOfWeek(addWeeks(from, weeks - 1), { weekStartsOn: 1 });
     onDateRangeChange({ from, to });
+  };
+
+  // Reiniciar el botón activo cuando se selecciona manualmente un rango
+  const handleManualSelection = (range: DateRange | undefined) => {
+    setActiveQuickSelection(null);
+    onDateRangeChange(range);
   };
 
   return (
@@ -33,18 +74,8 @@ export const DateRangeSelector = ({ dateRange, onDateRangeChange }: DateRangeSel
               variant="outline"
               className="justify-start text-left font-normal h-10"
             >
-              <CalendarDays className="mr-2 h-4 w-4" />
-              {dateRange?.from ? (
-                dateRange.to ? (
-                  <>
-                    {format(dateRange.from, "d MMM", { locale: es })} - {format(dateRange.to, "d MMM yyyy", { locale: es })}
-                  </>
-                ) : (
-                  format(dateRange.from, "d 'de' MMMM yyyy", { locale: es })
-                )
-              ) : (
-                "Seleccionar rango de fechas"
-              )}
+              <CalendarRange className="mr-2 h-4 w-4" />
+              {getDateRangeText()}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -53,7 +84,7 @@ export const DateRangeSelector = ({ dateRange, onDateRangeChange }: DateRangeSel
               mode="range"
               defaultMonth={dateRange?.from}
               selected={dateRange}
-              onSelect={onDateRangeChange}
+              onSelect={handleManualSelection}
               numberOfMonths={2}
               className={cn("p-3 pointer-events-auto")}
               locale={es}
@@ -63,13 +94,25 @@ export const DateRangeSelector = ({ dateRange, onDateRangeChange }: DateRangeSel
         </Popover>
         
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => handleQuickSelection(4)}>
+          <Button 
+            variant={activeQuickSelection === 4 ? "default" : "outline"} 
+            size="sm" 
+            onClick={() => handleQuickSelection(4)}
+          >
             1 Mes
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickSelection(8)}>
+          <Button 
+            variant={activeQuickSelection === 8 ? "default" : "outline"} 
+            size="sm" 
+            onClick={() => handleQuickSelection(8)}
+          >
             2 Meses
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleQuickSelection(13)}>
+          <Button 
+            variant={activeQuickSelection === 13 ? "default" : "outline"} 
+            size="sm" 
+            onClick={() => handleQuickSelection(13)}
+          >
             3 Meses
           </Button>
         </div>

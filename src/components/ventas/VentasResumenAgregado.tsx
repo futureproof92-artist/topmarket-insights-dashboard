@@ -3,6 +3,8 @@ import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { VentaDetalle } from '@/pages/dashboard/VentasPage';
+import { format, differenceInDays, differenceInWeeks } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface LeadsData {
   leads_pub_em: number;
@@ -20,9 +22,33 @@ interface HistorialItem {
 
 interface VentasResumenAgregadoProps {
   historial: HistorialItem[];
+  dateRange?: {
+    from: Date;
+    to: Date;
+  };
 }
 
-export const VentasResumenAgregado = ({ historial }: VentasResumenAgregadoProps) => {
+export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgregadoProps) => {
+  // Calcular periodo seleccionado
+  const periodoSeleccionado = useMemo(() => {
+    if (!dateRange?.from || !dateRange?.to) {
+      return `${historial.length} semanas seleccionadas`;
+    }
+
+    const days = differenceInDays(dateRange.to, dateRange.from) + 1;
+    const totalWeeks = Math.ceil(days / 7);
+    
+    if (totalWeeks <= 4) {
+      return `${totalWeeks} ${totalWeeks === 1 ? 'semana' : 'semanas'} seleccionadas`;
+    } else if (totalWeeks <= 8) {
+      return `Aproximadamente 2 meses seleccionados`;
+    } else if (totalWeeks <= 13) {
+      return `Aproximadamente 3 meses seleccionados`;
+    } else {
+      return `${format(dateRange.from, "d MMM yyyy", { locale: es })} al ${format(dateRange.to, "d MMM yyyy", { locale: es })}`;
+    }
+  }, [dateRange, historial.length]);
+
   // Calcular datos agregados usando useMemo para evitar recálculos innecesarios
   const datosAgregados = useMemo(() => {
     if (!historial.length) return null;
@@ -91,11 +117,11 @@ export const VentasResumenAgregado = ({ historial }: VentasResumenAgregadoProps)
     return {
       totalLeads,
       ventasPorCliente: Object.values(ventasPorCliente),
-      periodoSeleccionado: `${historial.length} semanas seleccionadas`,
+      periodoSeleccionado,
       totalVentas: todasLasVentas.reduce((sum, venta) => 
         sum + (venta.costo_unitario * venta.total_vacs), 0)
     };
-  }, [historial]);
+  }, [historial, periodoSeleccionado]);
 
   if (!datosAgregados) {
     return (

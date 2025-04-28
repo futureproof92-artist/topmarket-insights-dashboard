@@ -46,18 +46,15 @@ const VentasPage = () => {
   } | null>(null);
   
   const [currentWeek, setCurrentWeek] = useState<WeekRange>(() => {
-    // Iniciar con la semana actual
     const now = new Date();
     return getWeekRange(now);
   });
 
-  // Estado para el rango de fechas (para admin)
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfWeek(new Date(), { weekStartsOn: 1 }),
     to: addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), 28)
   });
 
-  // Datos de leads para la semana actual
   const [leadsData, setLeadsData] = useState<LeadsData>({
     leads_pub_em: 0,
     leads_pub_cl: 0,
@@ -66,13 +63,10 @@ const VentasPage = () => {
     ventas_cerradas: 0
   });
 
-  // Detalle de ventas para la semana actual
   const [ventasDetalle, setVentasDetalle] = useState<VentaDetalle[]>([]);
 
-  // Estado para determinar si el usuario es administrador
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Historial mockup - en una implementación real esto vendría de backend
   const [historialSemanas, setHistorialSemanas] = useState<{
     semana: string;
     leads: LeadsData;
@@ -100,42 +94,26 @@ const VentasPage = () => {
       tipo_servicio: 'HH',
       costo_unitario: 7500,
       total_vacs: 1
-    }, {
-      id: '3',
-      cliente: 'Grupo Innovación',
-      ubicacion: 'Guadalajara',
-      tipo_servicio: 'OTRO',
-      costo_unitario: 4800,
-      total_vacs: 3
     }]
   }]);
-  
-  // Historial filtrado según el rango de fechas para admin
+
   const [historialFiltrado, setHistorialFiltrado] = useState<typeof historialSemanas>([]);
-  
+
   useEffect(() => {
-    // Obtener el usuario del localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
       
-      // Verificar si es admin
       setIsAdmin(parsedUser.role === 'admin' || parsedUser.email?.includes('sergio.t@topmarket.com.mx'));
     }
 
-    // Actualizar ventasDetalle basado en el número de ventas_cerradas
     updateVentasDetalleRows(leadsData.ventas_cerradas);
   }, []);
-  
-  // Efecto para filtrar el historial según el rango de fechas para admin
+
   useEffect(() => {
     if (!dateRange?.from || !dateRange?.to) return;
     
-    // Aquí simularemos que filtramos el historial según el rango
-    // En una implementación real, haríamos una llamada a la API
-    
-    // Por ahora, agregamos algunos datos mock adicionales para mostrar la funcionalidad
     const semanasMock = [
       {
         semana: 'Lun 21 de Abr 2025 – Vie 25 de Abr 2025',
@@ -218,15 +196,11 @@ const VentasPage = () => {
     
   }, [dateRange]);
 
-  // Función para calcular el rango de semana a partir de una fecha
   function getWeekRange(date: Date): WeekRange {
-    // Ajustar para que la semana comience el lunes
     const startDate = startOfWeek(date, {
       weekStartsOn: 1
     });
-    const endDate = addDays(startDate, 4); // Viernes (4 días después del lunes)
-
-    // Formatear el texto de visualización
+    const endDate = addDays(startDate, 4);
     const displayText = `Lun ${format(startDate, "d 'de' MMM yyyy", {
       locale: es
     })} – Vie ${format(endDate, "d 'de' MMM yyyy", {
@@ -239,23 +213,19 @@ const VentasPage = () => {
     };
   }
 
-  // Función para mover a la semana anterior
   const prevWeek = () => {
     const prevWeekStart = addDays(currentWeek.startDate, -7);
     setCurrentWeek(getWeekRange(prevWeekStart));
   };
 
-  // Función para mover a la semana siguiente
   const nextWeek = () => {
     const nextWeekStart = addDays(currentWeek.startDate, 7);
     setCurrentWeek(getWeekRange(nextWeekStart));
   };
 
-  // Actualizar las filas de detalle de ventas basado en ventas_cerradas
   const updateVentasDetalleRows = (ventasCerradas: number) => {
     const currentLength = ventasDetalle.length;
     if (ventasCerradas > currentLength) {
-      // Añadir filas nuevas
       const newRows = Array.from({
         length: ventasCerradas - currentLength
       }, (_, i) => ({
@@ -268,18 +238,15 @@ const VentasPage = () => {
       }));
       setVentasDetalle([...ventasDetalle, ...newRows]);
     } else if (ventasCerradas < currentLength) {
-      // Eliminar filas excedentes
       setVentasDetalle(ventasDetalle.slice(0, ventasCerradas));
     }
   };
 
-  // Manejar cambios en los datos de leads
   const handleLeadsChange = (newLeadsData: LeadsData) => {
     setLeadsData(newLeadsData);
     updateVentasDetalleRows(newLeadsData.ventas_cerradas);
   };
 
-  // Manejar cambios en detalle de ventas
   const handleVentaDetalleChange = (index: number, field: keyof VentaDetalle, value: any) => {
     const updatedVentas = [...ventasDetalle];
     updatedVentas[index] = {
@@ -289,19 +256,15 @@ const VentasPage = () => {
     setVentasDetalle(updatedVentas);
   };
 
-  // Guardar datos de la semana
   const handleSaveWeekData = () => {
-    // Aquí se implementaría la lógica para guardar en backend
     console.log('Guardando datos de la semana:', {
       semana: currentWeek.displayText,
       leads: leadsData,
       ventasDetalle
     });
 
-    // Mock para simular actualización de historial
     const existingWeekIndex = historialSemanas.findIndex(item => item.semana === currentWeek.displayText);
     if (existingWeekIndex >= 0) {
-      // Actualizar semana existente
       const updatedHistorial = [...historialSemanas];
       updatedHistorial[existingWeekIndex] = {
         semana: currentWeek.displayText,
@@ -312,7 +275,6 @@ const VentasPage = () => {
       };
       setHistorialSemanas(updatedHistorial);
     } else {
-      // Añadir nueva semana al historial
       setHistorialSemanas([...historialSemanas, {
         semana: currentWeek.displayText,
         leads: {
@@ -322,11 +284,9 @@ const VentasPage = () => {
       }]);
     }
 
-    // Mostrar notificación de éxito (en una implementación real)
     alert('Datos guardados correctamente');
   };
 
-  // Manejar cambio en el rango de fechas (para admin)
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
   };
@@ -339,7 +299,6 @@ const VentasPage = () => {
     <AppShell user={user}>
       <div className="space-y-6">
         {isAdmin ? (
-          // Vista para administradores con selector de fechas por rango
           <div className="space-y-6">
             <h1 className="text-2xl font-bold">Panel de Ventas (Eve)</h1>
             <DateRangeSelector dateRange={dateRange} onDateRangeChange={handleDateRangeChange} />
@@ -351,7 +310,7 @@ const VentasPage = () => {
               </TabsList>
               
               <TabsContent value="resumen">
-                <VentasResumenAgregado historial={historialFiltrado} />
+                <VentasResumenAgregado historial={historialFiltrado} dateRange={dateRange} />
               </TabsContent>
               
               <TabsContent value="detalle">
@@ -360,9 +319,7 @@ const VentasPage = () => {
             </Tabs>
           </div>
         ) : (
-          // Vista normal para usuarios no administradores
           <>
-            {/* Selector de Semana */}
             <div className="flex items-center justify-between border p-4 rounded-md bg-slate-700">
               <Button variant="outline" size="icon" onClick={prevWeek}>
                 <ChevronLeft className="h-4 w-4" />
@@ -384,13 +341,10 @@ const VentasPage = () => {
               </TabsList>
               
               <TabsContent value="registro" className="space-y-4">
-                {/* Formulario de Leads */}
                 <LeadsForm leadsData={leadsData} onLeadsChange={handleLeadsChange} />
                 
-                {/* Formulario de Detalle de Ventas */}
                 {leadsData.ventas_cerradas > 0 && <VentasDetalleForm ventasDetalle={ventasDetalle} onVentaDetalleChange={handleVentaDetalleChange} />}
                 
-                {/* Botón de guardar */}
                 <Button className="w-full mt-4 bg-topmarket hover:bg-topmarket/90" onClick={handleSaveWeekData}>
                   Guardar Información Semanal
                 </Button>
