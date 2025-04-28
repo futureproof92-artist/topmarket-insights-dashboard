@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserCheck, Users } from 'lucide-react';
@@ -17,6 +18,8 @@ export const Sidebar = ({
   impersonatedRole,
   onImpersonate
 }: SidebarProps) => {
+  const navigate = useNavigate();
+  
   // Determine if user is admin
   const isAdmin = user?.role === 'admin' || user?.email?.includes('sergio.t@topmarket.com.mx');
 
@@ -83,11 +86,24 @@ export const Sidebar = ({
     name: 'Nataly Zarate',
     description: 'Cobranza'
   }];
+  
   const handleImpersonate = (role: string | null) => {
     if (onImpersonate) {
       onImpersonate(role);
+      
+      // Redirección automática a la página correspondiente al rol seleccionado
+      if (role) {
+        const targetItems = getNavItems(role);
+        if (targetItems.length > 0) {
+          navigate(targetItems[0].path);
+        }
+      } else {
+        // Si se cancela la impersonación, volver a la vista de admin
+        navigate('/admin');
+      }
     }
   };
+  
   return <aside className="w-full md:w-64 bg-sidebar border-r border-border">
       <div className="flex flex-col h-full">
         <div className="p-4">
@@ -99,7 +115,9 @@ export const Sidebar = ({
           <ul className="space-y-2">
             {navItems.map(item => <li key={item.path}>
                 <Link to={item.path}>
-                  
+                  <Button variant="ghost" className="w-full justify-start text-sm" asChild>
+                    <span>{item.name}</span>
+                  </Button>
                 </Link>
               </li>)}
 
