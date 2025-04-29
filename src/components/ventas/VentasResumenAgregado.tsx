@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,7 +5,6 @@ import { VentaDetalle } from '@/pages/dashboard/VentasPage';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
-
 interface LeadsData {
   leads_pub_em: number;
   leads_pub_cl: number;
@@ -14,30 +12,29 @@ interface LeadsData {
   leads_frio_cl: number;
   ventas_cerradas: number;
 }
-
 interface HistorialItem {
   semana: string;
   leads: LeadsData;
   ventasDetalle: VentaDetalle[];
 }
-
 interface VentasResumenAgregadoProps {
   historial: HistorialItem[];
   dateRange?: DateRange; // Updated to use DateRange from react-day-picker
 }
-
-export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgregadoProps) => {
+export const VentasResumenAgregado = ({
+  historial,
+  dateRange
+}: VentasResumenAgregadoProps) => {
   // Calcular periodo seleccionado
   const periodoSeleccionado = useMemo(() => {
     if (!dateRange?.from) {
       return `${historial.length} semanas seleccionadas`;
     }
-    
+
     // If to is not defined, use from as the end date for calculations
     const endDate = dateRange.to || dateRange.from;
     const days = differenceInDays(endDate, dateRange.from) + 1;
     const totalWeeks = Math.ceil(days / 7);
-    
     if (totalWeeks <= 4) {
       return `${totalWeeks} ${totalWeeks === 1 ? 'semana' : 'semanas'} seleccionadas`;
     } else if (totalWeeks <= 8) {
@@ -45,7 +42,11 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
     } else if (totalWeeks <= 13) {
       return `Aproximadamente 3 meses seleccionados`;
     } else {
-      return `${format(dateRange.from, "d MMM yyyy", { locale: es })} al ${format(endDate, "d MMM yyyy", { locale: es })}`;
+      return `${format(dateRange.from, "d MMM yyyy", {
+        locale: es
+      })} al ${format(endDate, "d MMM yyyy", {
+        locale: es
+      })}`;
     }
   }, [dateRange, historial.length]);
 
@@ -59,7 +60,7 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
       leads_pub_cl: 0,
       leads_frio_em: 0,
       leads_frio_cl: 0,
-      ventas_cerradas: 0,
+      ventas_cerradas: 0
     };
 
     // Acumular todas las ventas
@@ -68,7 +69,6 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
     // Logging para depuración
     console.log("Filtrando datos por rango de fecha:", dateRange);
     console.log("Datos históricos disponibles:", historial.length, "semanas");
-
     historial.forEach(item => {
       // Sumar leads
       totalLeads.leads_pub_em += item.leads.leads_pub_em;
@@ -91,7 +91,6 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
       totalVacantes: number;
       montoTotal: number;
     }> = {};
-
     todasLasVentas.forEach(venta => {
       if (!ventasPorCliente[venta.cliente]) {
         ventasPorCliente[venta.cliente] = {
@@ -113,30 +112,22 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
       } else {
         ventasPorCliente[venta.cliente].totalServiciosOTRO += 1;
       }
-
       ventasPorCliente[venta.cliente].totalVacantes += venta.total_vacs;
       ventasPorCliente[venta.cliente].montoTotal += venta.costo_unitario * venta.total_vacs;
     });
-
     return {
       totalLeads,
       ventasPorCliente: Object.values(ventasPorCliente),
       periodoSeleccionado,
-      totalVentas: todasLasVentas.reduce((sum, venta) => 
-        sum + (venta.costo_unitario * venta.total_vacs), 0)
+      totalVentas: todasLasVentas.reduce((sum, venta) => sum + venta.costo_unitario * venta.total_vacs, 0)
     };
   }, [historial, periodoSeleccionado]);
-
   if (!datosAgregados) {
-    return (
-      <div className="text-center py-12 bg-muted rounded-lg">
+    return <div className="text-center py-12 bg-muted rounded-lg">
         <p className="text-muted-foreground">No hay datos disponibles para el período seleccionado</p>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Resumen Agregado</h2>
         <span className="text-sm text-muted-foreground">{datosAgregados.periodoSeleccionado}</span>
@@ -172,8 +163,7 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
       </Card>
 
       {/* Tabla de Ventas por Cliente */}
-      {datosAgregados.ventasPorCliente.length > 0 && (
-        <div className="overflow-x-auto">
+      {datosAgregados.ventasPorCliente.length > 0 && <div className="overflow-x-auto">
           <h3 className="font-semibold mb-4">Resumen de Ventas por Cliente</h3>
           <Table>
             <TableHeader>
@@ -184,31 +174,25 @@ export const VentasResumenAgregado = ({ historial, dateRange }: VentasResumenAgr
                 <TableHead>Total HH</TableHead>
                 <TableHead>Total Otros</TableHead>
                 <TableHead>Total Vacantes</TableHead>
-                <TableHead>Monto Total</TableHead>
+                
               </TableRow>
             </TableHeader>
             <TableBody>
-              {datosAgregados.ventasPorCliente.map((cliente, idx) => (
-                <TableRow key={`${cliente.cliente}-${idx}`}>
+              {datosAgregados.ventasPorCliente.map((cliente, idx) => <TableRow key={`${cliente.cliente}-${idx}`}>
                   <TableCell className="font-medium">{cliente.cliente}</TableCell>
                   <TableCell>{cliente.ubicacion}</TableCell>
                   <TableCell>{cliente.totalServiciosPXR}</TableCell>
                   <TableCell>{cliente.totalServiciosHH}</TableCell>
                   <TableCell>{cliente.totalServiciosOTRO}</TableCell>
                   <TableCell>{cliente.totalVacantes}</TableCell>
-                  <TableCell>${cliente.montoTotal.toLocaleString('es-MX')}</TableCell>
-                </TableRow>
-              ))}
+                  
+                </TableRow>)}
               <TableRow className="bg-muted/20">
                 <TableCell colSpan={6} className="text-right font-medium">Total:</TableCell>
-                <TableCell className="font-medium">
-                  ${datosAgregados.totalVentas.toLocaleString('es-MX')}
-                </TableCell>
+                
               </TableRow>
             </TableBody>
           </Table>
-        </div>
-      )}
-    </div>
-  );
+        </div>}
+    </div>;
 };
