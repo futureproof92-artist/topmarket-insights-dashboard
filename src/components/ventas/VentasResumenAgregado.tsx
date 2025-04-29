@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -163,7 +162,7 @@ export const VentasResumenAgregado = ({
 
   return <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">Resumen Agregado</h2>
+        <h2 className="text-2xl font-bold">Resumen Agregado</h2>
         <span className="text-sm text-muted-foreground">{datosAgregados.periodoSeleccionado}</span>
       </div>
 
@@ -229,7 +228,7 @@ export const VentasResumenAgregado = ({
                 <TableCell className="font-medium">
                   Promedio costo: ${datosAgregados.avgCost.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </TableCell>
-                <TableCell className="font-medium" colSpan={2}>
+                <TableCell className="font-medium text-right" colSpan={2}>
                   Sumar vacantes: {datosAgregados.totalVacancies}
                 </TableCell>
               </TableRow>
