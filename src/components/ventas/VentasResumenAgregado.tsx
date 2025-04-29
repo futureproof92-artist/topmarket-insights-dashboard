@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -95,6 +96,8 @@ export const VentasResumenAgregado = ({
       totalServiciosOTRO: number;
       totalVacantes: number;
       montoTotal: number;
+      costoUnitario: number; // Para calcular el promedio de costo unitario por cliente
+      totalServicios: number; // Para ayudar a calcular el promedio
     }> = {};
     
     todasLasVentas.forEach(venta => {
@@ -106,7 +109,9 @@ export const VentasResumenAgregado = ({
           totalServiciosHH: 0,
           totalServiciosOTRO: 0,
           totalVacantes: 0,
-          montoTotal: 0
+          montoTotal: 0,
+          costoUnitario: 0,
+          totalServicios: 0
         };
       }
 
@@ -118,8 +123,18 @@ export const VentasResumenAgregado = ({
       } else {
         ventasPorCliente[venta.cliente].totalServiciosOTRO += 1;
       }
+      
       ventasPorCliente[venta.cliente].totalVacantes += venta.total_vacs;
       ventasPorCliente[venta.cliente].montoTotal += venta.costo_unitario * venta.total_vacs;
+      ventasPorCliente[venta.cliente].costoUnitario += venta.costo_unitario;
+      ventasPorCliente[venta.cliente].totalServicios += 1;
+    });
+    
+    // Calcular el promedio de costo unitario para cada cliente
+    Object.values(ventasPorCliente).forEach(cliente => {
+      if (cliente.totalServicios > 0) {
+        cliente.costoUnitario = cliente.costoUnitario / cliente.totalServicios;
+      }
     });
 
     // Calculate global statistics
@@ -192,6 +207,7 @@ export const VentasResumenAgregado = ({
                 <TableHead>Total PXR</TableHead>
                 <TableHead>Total HH</TableHead>
                 <TableHead>Total Otros</TableHead>
+                <TableHead>Costo Unitario</TableHead>
                 <TableHead>Total Vacantes</TableHead>
               </TableRow>
             </TableHeader>
@@ -202,6 +218,7 @@ export const VentasResumenAgregado = ({
                   <TableCell>{cliente.totalServiciosPXR}</TableCell>
                   <TableCell>{cliente.totalServiciosHH}</TableCell>
                   <TableCell>{cliente.totalServiciosOTRO}</TableCell>
+                  <TableCell>${cliente.costoUnitario.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                   <TableCell>{cliente.totalVacantes}</TableCell>
                 </TableRow>)}
               <TableRow className="bg-muted/20">
@@ -212,7 +229,7 @@ export const VentasResumenAgregado = ({
                 <TableCell className="font-medium">
                   Promedio costo: ${datosAgregados.avgCost.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </TableCell>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium" colSpan={2}>
                   Sumar vacantes: {datosAgregados.totalVacancies}
                 </TableCell>
               </TableRow>
