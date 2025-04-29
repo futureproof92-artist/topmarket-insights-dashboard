@@ -4,6 +4,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ChartContainer } from '@/components/dashboard/ChartContainer';
 import { KpiTable } from '@/components/dashboard/KpiTable';
+import { CobranzaKpiSemanal } from '@/components/cobranza/CobranzaKpiSemanal';
 
 // Datos simulados
 const mockData = {
@@ -40,6 +41,9 @@ const CobranzaPage = () => {
   return (
     <AppShell user={user}>
       <div className="space-y-6">
+        {/* Nuevo componente de KPIs semanales */}
+        <CobranzaKpiSemanal />
+        
         <DashboardCard
           title="Total Cobrado"
           value={`$${totalCobranza.toLocaleString('es-MX')}`}
