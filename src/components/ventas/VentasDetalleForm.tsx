@@ -31,6 +31,14 @@ interface VentasDetalleFormProps {
 }
 
 export const VentasDetalleForm = ({ ventasDetalle, onVentaDetalleChange }: VentasDetalleFormProps) => {
+  // Calculate statistics
+  const clientCount = new Set(ventasDetalle.map(v => v.cliente).filter(c => c.trim() !== '')).size;
+  const avgCost = ventasDetalle.length > 0 && ventasDetalle.some(v => v.costo_unitario > 0)
+    ? ventasDetalle.reduce((sum, v) => sum + v.costo_unitario, 0) / 
+      ventasDetalle.filter(v => v.costo_unitario > 0).length
+    : 0;
+  const totalVacancies = ventasDetalle.reduce((sum, v) => sum + v.total_vacs, 0);
+
   return (
     <Card>
       <CardHeader>
@@ -108,6 +116,18 @@ export const VentasDetalleForm = ({ ventasDetalle, onVentaDetalleChange }: Venta
                   </TableCell>
                 </TableRow>
               ))}
+              <TableRow className="bg-muted/20">
+                <TableCell className="font-medium">
+                  Contar clientes: {clientCount}
+                </TableCell>
+                <TableCell colSpan={2}></TableCell>
+                <TableCell className="font-medium">
+                  Promedio costo: ${avgCost.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </TableCell>
+                <TableCell className="font-medium">
+                  Sumar vacantes: {totalVacancies}
+                </TableCell>
+              </TableRow>
             </TableBody>
           </Table>
         </div>

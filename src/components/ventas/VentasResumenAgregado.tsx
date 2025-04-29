@@ -5,6 +5,7 @@ import { VentaDetalle } from '@/pages/dashboard/VentasPage';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
+
 interface LeadsData {
   leads_pub_em: number;
   leads_pub_cl: number;
@@ -12,15 +13,18 @@ interface LeadsData {
   leads_frio_cl: number;
   ventas_cerradas: number;
 }
+
 interface HistorialItem {
   semana: string;
   leads: LeadsData;
   ventasDetalle: VentaDetalle[];
 }
+
 interface VentasResumenAgregadoProps {
   historial: HistorialItem[];
   dateRange?: DateRange; // Updated to use DateRange from react-day-picker
 }
+
 export const VentasResumenAgregado = ({
   historial,
   dateRange
@@ -69,6 +73,7 @@ export const VentasResumenAgregado = ({
     // Logging para depuración
     console.log("Filtrando datos por rango de fecha:", dateRange);
     console.log("Datos históricos disponibles:", historial.length, "semanas");
+    
     historial.forEach(item => {
       // Sumar leads
       totalLeads.leads_pub_em += item.leads.leads_pub_em;
@@ -91,6 +96,7 @@ export const VentasResumenAgregado = ({
       totalVacantes: number;
       montoTotal: number;
     }> = {};
+    
     todasLasVentas.forEach(venta => {
       if (!ventasPorCliente[venta.cliente]) {
         ventasPorCliente[venta.cliente] = {
@@ -115,18 +121,31 @@ export const VentasResumenAgregado = ({
       ventasPorCliente[venta.cliente].totalVacantes += venta.total_vacs;
       ventasPorCliente[venta.cliente].montoTotal += venta.costo_unitario * venta.total_vacs;
     });
+
+    // Calculate global statistics
+    const clientCount = Object.keys(ventasPorCliente).length;
+    const avgCost = todasLasVentas.length > 0 
+      ? todasLasVentas.reduce((sum, v) => sum + v.costo_unitario, 0) / todasLasVentas.length
+      : 0;
+    const totalVacancies = todasLasVentas.reduce((sum, v) => sum + v.total_vacs, 0);
+    
     return {
       totalLeads,
       ventasPorCliente: Object.values(ventasPorCliente),
       periodoSeleccionado,
+      clientCount,
+      avgCost,
+      totalVacancies,
       totalVentas: todasLasVentas.reduce((sum, venta) => sum + venta.costo_unitario * venta.total_vacs, 0)
     };
   }, [historial, periodoSeleccionado]);
+
   if (!datosAgregados) {
     return <div className="text-center py-12 bg-muted rounded-lg">
         <p className="text-muted-foreground">No hay datos disponibles para el período seleccionado</p>
       </div>;
   }
+
   return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">Resumen Agregado</h2>
@@ -174,7 +193,6 @@ export const VentasResumenAgregado = ({
                 <TableHead>Total HH</TableHead>
                 <TableHead>Total Otros</TableHead>
                 <TableHead>Total Vacantes</TableHead>
-                
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -185,11 +203,18 @@ export const VentasResumenAgregado = ({
                   <TableCell>{cliente.totalServiciosHH}</TableCell>
                   <TableCell>{cliente.totalServiciosOTRO}</TableCell>
                   <TableCell>{cliente.totalVacantes}</TableCell>
-                  
                 </TableRow>)}
               <TableRow className="bg-muted/20">
-                <TableCell colSpan={6} className="text-right font-medium">Total:</TableCell>
-                
+                <TableCell className="font-medium">
+                  Contar clientes: {datosAgregados.clientCount}
+                </TableCell>
+                <TableCell colSpan={3}></TableCell>
+                <TableCell className="font-medium">
+                  Promedio costo: ${datosAgregados.avgCost.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </TableCell>
+                <TableCell className="font-medium">
+                  Sumar vacantes: {datosAgregados.totalVacancies}
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
