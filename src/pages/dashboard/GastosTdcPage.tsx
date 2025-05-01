@@ -13,42 +13,88 @@ import { PlusIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { KpiTable } from '@/components/dashboard/KpiTable';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Datos simulados
-const mockData = {
-  tdc1: 45000,
-  tdc2: 38000,
-  tdc3: 25000,
-  tdc4: 18000,
-  
-  chartData: [
-    { name: 'Ene', tdc1: 40000, tdc2: 35000, tdc3: 20000, tdc4: 15000 },
-    { name: 'Feb', tdc1: 42000, tdc2: 36000, tdc3: 22000, tdc4: 16000 },
-    { name: 'Mar', tdc1: 43000, tdc2: 37000, tdc3: 23000, tdc4: 17000 },
-    { name: 'Abr', tdc1: 45000, tdc2: 38000, tdc3: 25000, tdc4: 18000 },
-  ],
-  
-  gastos: [
-    { id: '1', fecha: '2023-04-04', monto: 12000, detalles: 'Pago de servicios', tarjeta: 'tdc1' },
-    { id: '2', fecha: '2023-04-10', monto: 18000, detalles: 'Campaña marketing', tarjeta: 'tdc2' },
-    { id: '3', fecha: '2023-04-15', monto: 9000, detalles: 'Viaje a conferencia', tarjeta: 'tdc3' },
-    { id: '4', fecha: '2023-04-22', monto: 15000, detalles: 'Material oficina', tarjeta: 'tdc4' },
-  ],
+// Datos simulados por mes
+const mockDataByMonth = {
+  '2023-04': {
+    plataCard: { total: 45000, gastos: [
+      { id: '1', fecha: '2023-04-05', monto: 12000, detalles: 'Pago de servicios' },
+      { id: '2', fecha: '2023-04-15', monto: 8000, detalles: 'Materiales oficina' },
+    ]},
+    hsbc: { total: 38000, gastos: [
+      { id: '3', fecha: '2023-04-10', monto: 18000, detalles: 'Campaña marketing' },
+      { id: '4', fecha: '2023-04-20', monto: 5000, detalles: 'Comidas clientes' },
+    ]},
+    access: { total: 25000, gastos: [
+      { id: '5', fecha: '2023-04-15', monto: 9000, detalles: 'Viaje a conferencia' },
+      { id: '6', fecha: '2023-04-25', monto: 7000, detalles: 'Software licencias' },
+    ]},
+    simplicity: { total: 18000, gastos: [
+      { id: '7', fecha: '2023-04-22', monto: 15000, detalles: 'Material oficina' },
+      { id: '8', fecha: '2023-04-28', monto: 3000, detalles: 'Envíos urgentes' },
+    ]},
+    chartData: [
+      { name: 'Semana 1', plataCard: 12000, hsbc: 0, access: 0, simplicity: 0 },
+      { name: 'Semana 2', plataCard: 0, hsbc: 18000, access: 9000, simplicity: 0 },
+      { name: 'Semana 3', plataCard: 8000, hsbc: 5000, access: 0, simplicity: 15000 },
+      { name: 'Semana 4', plataCard: 0, hsbc: 0, access: 7000, simplicity: 3000 },
+    ]
+  },
+  '2023-05': {
+    plataCard: { total: 50000, gastos: [
+      { id: '9', fecha: '2023-05-05', monto: 15000, detalles: 'Equipo cómputo' },
+      { id: '10', fecha: '2023-05-15', monto: 10000, detalles: 'Publicidad' },
+    ]},
+    hsbc: { total: 42000, gastos: [
+      { id: '11', fecha: '2023-05-10', monto: 22000, detalles: 'Renta oficinas' },
+      { id: '12', fecha: '2023-05-20', monto: 6000, detalles: 'Papelería' },
+    ]},
+    access: { total: 28000, gastos: [
+      { id: '13', fecha: '2023-05-15', monto: 12000, detalles: 'Capacitación' },
+      { id: '14', fecha: '2023-05-25', monto: 8000, detalles: 'Mantenimiento' },
+    ]},
+    simplicity: { total: 22000, gastos: [
+      { id: '15', fecha: '2023-05-18', monto: 18000, detalles: 'Mobiliario' },
+      { id: '16', fecha: '2023-05-28', monto: 4000, detalles: 'Mensajería' },
+    ]},
+    chartData: [
+      { name: 'Semana 1', plataCard: 15000, hsbc: 0, access: 0, simplicity: 0 },
+      { name: 'Semana 2', plataCard: 0, hsbc: 22000, access: 12000, simplicity: 0 },
+      { name: 'Semana 3', plataCard: 10000, hsbc: 6000, access: 0, simplicity: 18000 },
+      { name: 'Semana 4', plataCard: 0, hsbc: 0, access: 8000, simplicity: 4000 },
+    ]
+  }
 };
+
+// Tarjetas
+const tarjetas = [
+  { id: 'plataCard', nombre: 'PLATA CARD', color: '#0045FF' },
+  { id: 'hsbc', nombre: 'HSBC', color: '#22C55E' },
+  { id: 'access', nombre: 'ACCESS', color: '#EAB308' },
+  { id: 'simplicity', nombre: 'SIMPLICITY', color: '#EC4899' },
+];
 
 const GastosTdcPage = () => {
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [date, setDate] = useState<Date>(new Date());
   const [amount, setAmount] = useState<string>('');
   const [tarjeta, setTarjeta] = useState<string>('');
   const [concepto, setConcepto] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  
+  // Formato de mes para acceder a los datos
+  const monthFormat = format(selectedMonth, 'yyyy-MM');
+  const monthData = mockDataByMonth[monthFormat as keyof typeof mockDataByMonth] || 
+    mockDataByMonth['2023-04']; // Fallback al primer mes si no hay datos
   
   useEffect(() => {
     // Obtener el usuario del localStorage
@@ -57,6 +103,12 @@ const GastosTdcPage = () => {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+
+  const handleMonthChange = (direction: 'prev' | 'next') => {
+    setSelectedMonth(prev => 
+      direction === 'prev' ? subMonths(prev, 1) : addMonths(prev, 1)
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +154,10 @@ const GastosTdcPage = () => {
     }, 1000);
   };
 
-  const totalGastos = mockData.tdc1 + mockData.tdc2 + mockData.tdc3 + mockData.tdc4;
+  // Calcular total de gastos
+  const totalGastos = tarjetas.reduce((total, tarjetaItem) => {
+    return total + (monthData[tarjetaItem.id as keyof typeof monthData] as any)?.total || 0;
+  }, 0);
   
   if (!user) {
     return <div>Cargando...</div>;
@@ -148,6 +203,7 @@ const GastosTdcPage = () => {
                         selected={date}
                         onSelect={(date) => date && setDate(date)}
                         initialFocus
+                        className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -160,10 +216,10 @@ const GastosTdcPage = () => {
                       <SelectValue placeholder="Seleccionar tarjeta" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tdc1">TDC 1</SelectItem>
-                      <SelectItem value="tdc2">TDC 2</SelectItem>
-                      <SelectItem value="tdc3">TDC 3</SelectItem>
-                      <SelectItem value="tdc4">TDC 4</SelectItem>
+                      <SelectItem value="plataCard">PLATA CARD</SelectItem>
+                      <SelectItem value="hsbc">HSBC</SelectItem>
+                      <SelectItem value="access">ACCESS</SelectItem>
+                      <SelectItem value="simplicity">SIMPLICITY</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -200,37 +256,81 @@ const GastosTdcPage = () => {
           </Dialog>
         </div>
         
+        {/* Selector de mes */}
+        <div className="flex items-center justify-center space-x-4 mb-6">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handleMonthChange('prev')}
+          >
+            &lt; Mes anterior
+          </Button>
+          <h3 className="text-lg font-medium">
+            {format(selectedMonth, 'MMMM yyyy', { locale: es })}
+          </h3>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => handleMonthChange('next')}
+          >
+            Mes siguiente &gt;
+          </Button>
+        </div>
+        
         <DashboardCard
           title="Total Gastos TDC"
           value={`$${totalGastos.toLocaleString('es-MX')}`}
-          description="Suma de gastos en todas las tarjetas"
+          description={`Total para ${format(selectedMonth, 'MMMM yyyy', { locale: es })}`}
           trend={{ value: 8, isPositive: false }}
           className="w-full md:w-1/2"
         />
         
-        <div className="grid gap-4 md:grid-cols-4">
-          <DashboardCard title="TDC 1" value={`$${mockData.tdc1.toLocaleString('es-MX')}`} />
-          <DashboardCard title="TDC 2" value={`$${mockData.tdc2.toLocaleString('es-MX')}`} />
-          <DashboardCard title="TDC 3" value={`$${mockData.tdc3.toLocaleString('es-MX')}`} />
-          <DashboardCard title="TDC 4" value={`$${mockData.tdc4.toLocaleString('es-MX')}`} />
+        {/* Vista de 4 columnas con las tarjetas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {tarjetas.map((tarjetaItem) => {
+            const tarjetaData = monthData[tarjetaItem.id as keyof typeof monthData] as any;
+            return (
+              <Card key={tarjetaItem.id} className="overflow-hidden">
+                <CardHeader className="p-4" style={{ backgroundColor: tarjetaItem.color }}>
+                  <CardTitle className="text-white text-center">{tarjetaItem.nombre}</CardTitle>
+                  <p className="text-white text-center text-xl font-bold">
+                    ${tarjetaData?.total?.toLocaleString('es-MX') || '0'}
+                  </p>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-1/2 py-2">MONTO</TableHead>
+                        <TableHead className="w-1/2 py-2">CONCEPTO</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tarjetaData?.gastos?.length > 0 ? (
+                        tarjetaData.gastos.map((gasto: any) => (
+                          <TableRow key={gasto.id}>
+                            <TableCell className="py-2">${gasto.monto.toLocaleString('es-MX')}</TableCell>
+                            <TableCell className="py-2">{gasto.detalles}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4">No hay gastos registrados</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
         
         <ChartContainer
-          title="Gastos por Tarjeta (Mensual)"
-          data={mockData.chartData}
-          series={[
-            { name: 'TDC 1', dataKey: 'tdc1', color: '#0045FF' },
-            { name: 'TDC 2', dataKey: 'tdc2', color: '#22C55E' },
-            { name: 'TDC 3', dataKey: 'tdc3', color: '#EAB308' },
-            { name: 'TDC 4', dataKey: 'tdc4', color: '#EC4899' },
-          ]}
+          title={`Gastos por Tarjeta (${format(selectedMonth, 'MMMM yyyy', { locale: es })})`}
+          data={monthData.chartData}
+          series={tarjetas.map(t => ({ name: t.nombre, dataKey: t.id, color: t.color }))}
           type="bar"
-        />
-        
-        <KpiTable 
-          data={mockData.gastos} 
-          title="Historial de Gastos" 
-          onExportCSV={() => console.log('Export CSV Gastos')}
         />
       </div>
     </AppShell>
