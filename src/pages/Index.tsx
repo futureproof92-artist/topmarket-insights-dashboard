@@ -5,7 +5,7 @@ import { UserSelectionGrid } from '@/components/auth/UserSelectionGrid';
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 bg-white">
       <div className="w-full max-w-6xl space-y-8">
         <div className="text-center space-y-2 bg-white rounded-lg p-4">
           <img 

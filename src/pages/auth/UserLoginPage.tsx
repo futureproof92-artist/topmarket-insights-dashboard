@@ -92,10 +92,10 @@ const UserLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-background">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-white">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white">TopMarket</h2>
+          <h2 className="text-3xl font-bold text-gray-800">TopMarket</h2>
           <p className="text-muted-foreground mt-2">Acceso para {userInfo.name}</p>
         </div>
 
