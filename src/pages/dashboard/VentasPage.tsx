@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -64,6 +65,142 @@ const VentasPage = () => {
 
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Datos de ejemplo
+  const semanasMock = [
+    {
+      semana: 'Lun 21 de Abr 2025 – Vie 25 de Abr 2025',
+      leads: {
+        leads_pub_em: 15,
+        leads_pub_cl: 8,
+        leads_frio_em: 12,
+        leads_frio_cl: 5,
+        ventas_cerradas: 3
+      },
+      ventasDetalle: [{
+        id: '1',
+        cliente: 'Empresa ABC',
+        ubicacion: 'CDMX',
+        tipo_servicio: 'PXR' as const,
+        costo_unitario: 5000,
+        total_vacs: 2
+      }, {
+        id: '2',
+        cliente: 'Corporativo XYZ',
+        ubicacion: 'Monterrey',
+        tipo_servicio: 'HH' as const,
+        costo_unitario: 7500,
+        total_vacs: 1
+      }]
+    },
+    {
+      semana: 'Lun 28 de Abr 2025 – Vie 2 de May 2025',
+      leads: {
+        leads_pub_em: 10,
+        leads_pub_cl: 6,
+        leads_frio_em: 8,
+        leads_frio_cl: 4,
+        ventas_cerradas: 2
+      },
+      ventasDetalle: [{
+        id: '3',
+        cliente: 'Servicios Globales',
+        ubicacion: 'CDMX',
+        tipo_servicio: 'OTRO' as const,
+        costo_unitario: 6200,
+        total_vacs: 1
+      }, {
+        id: '4',
+        cliente: 'Empresa ABC',
+        ubicacion: 'CDMX',
+        tipo_servicio: 'PXR' as const,
+        costo_unitario: 4800,
+        total_vacs: 3
+      }]
+    },
+    {
+      semana: 'Lun 5 de May 2025 – Vie 9 de May 2025',
+      leads: {
+        leads_pub_em: 18,
+        leads_pub_cl: 9,
+        leads_frio_em: 14,
+        leads_frio_cl: 7,
+        ventas_cerradas: 5
+      },
+      ventasDetalle: [{
+        id: '5',
+        cliente: 'TechStart',
+        ubicacion: 'Guadalajara',
+        tipo_servicio: 'HH' as const,
+        costo_unitario: 8000,
+        total_vacs: 2
+      }, {
+        id: '6',
+        cliente: 'Innovación Digital',
+        ubicacion: 'Monterrey',
+        tipo_servicio: 'PXR' as const,
+        costo_unitario: 5500,
+        total_vacs: 3
+      }]
+    },
+    {
+      semana: 'Lun 12 de May 2025 – Vie 16 de May 2025',
+      leads: {
+        leads_pub_em: 20,
+        leads_pub_cl: 12,
+        leads_frio_em: 16,
+        leads_frio_cl: 9,
+        ventas_cerradas: 4
+      },
+      ventasDetalle: [{
+        id: '7',
+        cliente: 'Consultora TechPro',
+        ubicacion: 'Puebla',
+        tipo_servicio: 'HH' as const,
+        costo_unitario: 7000,
+        total_vacs: 4
+      }, {
+        id: '8',
+        cliente: 'Servicios Globales',
+        ubicacion: 'CDMX',
+        tipo_servicio: 'OTRO' as const,
+        costo_unitario: 6500,
+        total_vacs: 2
+      }]
+    },
+    {
+      semana: 'Lun 19 de May 2025 – Vie 23 de May 2025',
+      leads: {
+        leads_pub_em: 22,
+        leads_pub_cl: 14,
+        leads_frio_em: 18,
+        leads_frio_cl: 10,
+        ventas_cerradas: 6
+      },
+      ventasDetalle: [{
+        id: '9',
+        cliente: 'Empresa ABC',
+        ubicacion: 'CDMX',
+        tipo_servicio: 'PXR' as const,
+        costo_unitario: 5200,
+        total_vacs: 3
+      }, {
+        id: '10',
+        cliente: 'TechStart',
+        ubicacion: 'Guadalajara',
+        tipo_servicio: 'HH' as const,
+        costo_unitario: 8500,
+        total_vacs: 1
+      }, {
+        id: '11',
+        cliente: 'Corporativo XYZ',
+        ubicacion: 'Monterrey',
+        tipo_servicio: 'PXR' as const,
+        costo_unitario: 7200,
+        total_vacs: 2
+      }]
+    }
+  ];
+  
   const [historialSemanas, setHistorialSemanas] = useState<{
     semana: string;
     leads: LeadsData;
@@ -94,8 +231,6 @@ const VentasPage = () => {
     }]
   }]);
 
-  const [historialFiltrado, setHistorialFiltrado] = useState<typeof historialSemanas>([]);
-
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -106,150 +241,15 @@ const VentasPage = () => {
     }
 
     updateVentasDetalleRows(leadsData.ventas_cerradas);
+    
+    // Inicializar el historial con datos de ejemplo
+    setHistorialSemanas(semanasMock);
   }, []);
 
   useEffect(() => {
     if (!dateRange?.from) return;
     
-    const semanasMock = [
-      {
-        semana: 'Lun 21 de Abr 2025 – Vie 25 de Abr 2025',
-        leads: {
-          leads_pub_em: 15,
-          leads_pub_cl: 8,
-          leads_frio_em: 12,
-          leads_frio_cl: 5,
-          ventas_cerradas: 3
-        },
-        ventasDetalle: [{
-          id: '1',
-          cliente: 'Empresa ABC',
-          ubicacion: 'CDMX',
-          tipo_servicio: 'PXR' as const,
-          costo_unitario: 5000,
-          total_vacs: 2
-        }, {
-          id: '2',
-          cliente: 'Corporativo XYZ',
-          ubicacion: 'Monterrey',
-          tipo_servicio: 'HH' as const,
-          costo_unitario: 7500,
-          total_vacs: 1
-        }]
-      },
-      {
-        semana: 'Lun 28 de Abr 2025 – Vie 2 de May 2025',
-        leads: {
-          leads_pub_em: 10,
-          leads_pub_cl: 6,
-          leads_frio_em: 8,
-          leads_frio_cl: 4,
-          ventas_cerradas: 2
-        },
-        ventasDetalle: [{
-          id: '3',
-          cliente: 'Servicios Globales',
-          ubicacion: 'CDMX',
-          tipo_servicio: 'OTRO' as const,
-          costo_unitario: 6200,
-          total_vacs: 1
-        }, {
-          id: '4',
-          cliente: 'Empresa ABC',
-          ubicacion: 'CDMX',
-          tipo_servicio: 'PXR' as const,
-          costo_unitario: 4800,
-          total_vacs: 3
-        }]
-      },
-      {
-        semana: 'Lun 5 de May 2025 – Vie 9 de May 2025',
-        leads: {
-          leads_pub_em: 18,
-          leads_pub_cl: 9,
-          leads_frio_em: 14,
-          leads_frio_cl: 7,
-          ventas_cerradas: 5
-        },
-        ventasDetalle: [{
-          id: '5',
-          cliente: 'TechStart',
-          ubicacion: 'Guadalajara',
-          tipo_servicio: 'HH' as const,
-          costo_unitario: 8000,
-          total_vacs: 2
-        }, {
-          id: '6',
-          cliente: 'Innovación Digital',
-          ubicacion: 'Monterrey',
-          tipo_servicio: 'PXR' as const,
-          costo_unitario: 5500,
-          total_vacs: 3
-        }]
-      },
-      {
-        semana: 'Lun 12 de May 2025 – Vie 16 de May 2025',
-        leads: {
-          leads_pub_em: 20,
-          leads_pub_cl: 12,
-          leads_frio_em: 16,
-          leads_frio_cl: 9,
-          ventas_cerradas: 4
-        },
-        ventasDetalle: [{
-          id: '7',
-          cliente: 'Consultora TechPro',
-          ubicacion: 'Puebla',
-          tipo_servicio: 'HH' as const,
-          costo_unitario: 7000,
-          total_vacs: 4
-        }, {
-          id: '8',
-          cliente: 'Servicios Globales',
-          ubicacion: 'CDMX',
-          tipo_servicio: 'OTRO' as const,
-          costo_unitario: 6500,
-          total_vacs: 2
-        }]
-      },
-      {
-        semana: 'Lun 19 de May 2025 – Vie 23 de May 2025',
-        leads: {
-          leads_pub_em: 22,
-          leads_pub_cl: 14,
-          leads_frio_em: 18,
-          leads_frio_cl: 10,
-          ventas_cerradas: 6
-        },
-        ventasDetalle: [{
-          id: '9',
-          cliente: 'Empresa ABC',
-          ubicacion: 'CDMX',
-          tipo_servicio: 'PXR' as const,
-          costo_unitario: 5200,
-          total_vacs: 3
-        }, {
-          id: '10',
-          cliente: 'TechStart',
-          ubicacion: 'Guadalajara',
-          tipo_servicio: 'HH' as const,
-          costo_unitario: 8500,
-          total_vacs: 1
-        }, {
-          id: '11',
-          cliente: 'Corporativo XYZ',
-          ubicacion: 'Monterrey',
-          tipo_servicio: 'PXR' as const,
-          costo_unitario: 7200,
-          total_vacs: 2
-        }]
-      }
-    ];
-    
     console.log("Filtrando datos por rango de fechas:", dateRange);
-    
-    setHistorialFiltrado(semanasMock);
-    
   }, [dateRange]);
 
   function getWeekRange(date: Date): WeekRange {
@@ -366,11 +366,11 @@ const VentasPage = () => {
               </TabsList>
               
               <TabsContent value="resumen">
-                <VentasResumenAgregado historial={historialFiltrado} dateRange={dateRange} />
+                <VentasResumenAgregado historial={historialSemanas} dateRange={dateRange} />
               </TabsContent>
               
               <TabsContent value="detalle">
-                <HistorialSemanal historial={historialFiltrado} />
+                <HistorialSemanal historial={historialSemanas} />
               </TabsContent>
             </Tabs>
           </div>

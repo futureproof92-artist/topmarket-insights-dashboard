@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -54,6 +55,46 @@ export const VentasResumenAgregado = ({
     }
   }, [dateRange, historial.length]);
 
+  // Función para determinar si una semana está dentro del rango de fechas seleccionado
+  const isWeekInDateRange = (semana: string) => {
+    if (!dateRange?.from) return true; // Si no hay rango seleccionado, mostrar todo
+    
+    try {
+      // Extraer las fechas de la cadena "Lun 21 de Abr 2025 – Vie 25 de Abr 2025"
+      const [startDateStr, endDateStr] = semana.split('–').map(s => s.trim());
+      
+      // Parsear la fecha de inicio de la semana (formato: "Lun 21 de Abr 2025")
+      const startDay = parseInt(startDateStr.split(' ')[1]);
+      const startMonth = startDateStr.split(' ')[3];
+      const startYear = parseInt(startDateStr.split(' ')[4]);
+      
+      // Crear un objeto Date para la fecha de inicio de la semana
+      const monthMap: Record<string, number> = {
+        'Ene': 0, 'Feb': 1, 'Mar': 2, 'Abr': 3, 'May': 4, 'Jun': 5, 
+        'Jul': 6, 'Ago': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dic': 11
+      };
+      
+      const startDate = new Date(startYear, monthMap[startMonth], startDay);
+      
+      // Para la fecha de fin, hacemos algo similar
+      const endDay = parseInt(endDateStr.split(' ')[1]);
+      const endMonth = endDateStr.split(' ')[3];
+      const endYear = parseInt(endDateStr.split(' ')[4]);
+      
+      const endDate = new Date(endYear, monthMap[endMonth], endDay);
+      
+      // Verificar si hay intersección entre el rango de la semana y el rango seleccionado
+      const rangeEnd = dateRange.to || dateRange.from;
+      
+      // Comprobar si hay alguna superposición entre los rangos
+      return !(endDate < dateRange.from || startDate > rangeEnd);
+      
+    } catch (error) {
+      console.error("Error al parsear fecha de semana:", semana, error);
+      return true; // En caso de error, incluir la semana
+    }
+  };
+  
   // Calcular datos agregados usando useMemo para evitar recálculos innecesarios
   const datosAgregados = useMemo(() => {
     if (!historial.length) return null;
@@ -74,7 +115,14 @@ export const VentasResumenAgregado = ({
     console.log("Filtrando datos por rango de fecha:", dateRange);
     console.log("Datos históricos disponibles:", historial.length, "semanas");
     
-    historial.forEach(item => {
+    // Filtrar el historial según el rango de fechas
+    const historialFiltrado = dateRange?.from 
+      ? historial.filter(item => isWeekInDateRange(item.semana))
+      : historial;
+      
+    console.log("Semanas después de filtrar:", historialFiltrado.length);
+    
+    historialFiltrado.forEach(item => {
       // Sumar leads
       totalLeads.leads_pub_em += item.leads.leads_pub_em;
       totalLeads.leads_pub_cl += item.leads.leads_pub_cl;
@@ -152,7 +200,7 @@ export const VentasResumenAgregado = ({
       totalVacancies,
       totalVentas: todasLasVentas.reduce((sum, venta) => sum + venta.costo_unitario * venta.total_vacs, 0)
     };
-  }, [historial, periodoSeleccionado]);
+  }, [historial, periodoSeleccionado, dateRange]);
 
   if (!datosAgregados) {
     return <div className="text-center py-12 bg-muted rounded-lg">
