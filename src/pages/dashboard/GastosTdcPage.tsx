@@ -91,6 +91,11 @@ const GastosTdcPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
+  // New state for inline editing
+  const [inlineEditing, setInlineEditing] = useState<string | null>(null);
+  const [inlineAmount, setInlineAmount] = useState<string>('');
+  const [inlineConcepto, setInlineConcepto] = useState<string>('');
+  
   // Formato de mes para acceder a los datos
   const monthFormat = format(selectedMonth, 'yyyy-MM');
   const monthData = mockDataByMonth[monthFormat as keyof typeof mockDataByMonth] || 
@@ -152,6 +157,51 @@ const GastosTdcPage = () => {
       setConcepto('');
       setIsLoading(false);
     }, 1000);
+  };
+
+  // Handler for submitting inline expense addition
+  const handleInlineSubmit = (tarjetaId: string) => {
+    if (!inlineAmount || isNaN(parseFloat(inlineAmount))) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa un monto válido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Simulate API call
+    setTimeout(() => {
+      console.log({
+        fecha: format(new Date(), 'yyyy-MM-dd'),
+        tarjeta: tarjetaId,
+        monto: parseFloat(inlineAmount.replace(/,/g, '')),
+        concepto: inlineConcepto,
+      });
+
+      toast({
+        title: "Gasto registrado",
+        description: "El gasto ha sido registrado correctamente"
+      });
+      
+      setInlineEditing(null);
+      setInlineAmount('');
+      setInlineConcepto('');
+    }, 500);
+  };
+
+  // Start inline editing for a specific card
+  const startInlineEditing = (tarjetaId: string) => {
+    setInlineEditing(tarjetaId);
+    setInlineAmount('');
+    setInlineConcepto('');
+  };
+
+  // Cancel inline editing
+  const cancelInlineEditing = () => {
+    setInlineEditing(null);
+    setInlineAmount('');
+    setInlineConcepto('');
   };
 
   // Calcular total de gastos
@@ -289,6 +339,8 @@ const GastosTdcPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {tarjetas.map((tarjetaItem) => {
             const tarjetaData = monthData[tarjetaItem.id as keyof typeof monthData] as any;
+            const isEditingThisCard = inlineEditing === tarjetaItem.id;
+            
             return (
               <Card key={tarjetaItem.id} className="overflow-hidden">
                 <CardHeader className="p-4" style={{ backgroundColor: tarjetaItem.color }}>
@@ -316,6 +368,64 @@ const GastosTdcPage = () => {
                       ) : (
                         <TableRow>
                           <TableCell colSpan={2} className="text-center py-4">No hay gastos registrados</TableCell>
+                        </TableRow>
+                      )}
+                      
+                      {/* Inline editing row */}
+                      {isEditingThisCard && (
+                        <TableRow>
+                          <TableCell className="py-2 px-2">
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">$</span>
+                              <Input 
+                                value={inlineAmount} 
+                                onChange={(e) => setInlineAmount(e.target.value)}
+                                className="pl-7" 
+                                placeholder="0.00"
+                                autoFocus
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2 px-2">
+                            <div className="flex space-x-2">
+                              <Input 
+                                value={inlineConcepto} 
+                                onChange={(e) => setInlineConcepto(e.target.value)}
+                                placeholder="Descripción"
+                                className="flex-grow"
+                              />
+                              <Button 
+                                size="sm" 
+                                className="bg-green-500 hover:bg-green-600 text-white"
+                                onClick={() => handleInlineSubmit(tarjetaItem.id)}
+                              >
+                                ✓
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={cancelInlineEditing}
+                              >
+                                ✕
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+
+                      {/* "Add expense" button row */}
+                      {!isEditingThisCard && (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="w-full text-gray-400 hover:text-gray-600"
+                              onClick={() => startInlineEditing(tarjetaItem.id)}
+                            >
+                              <PlusIcon className="h-4 w-4 mr-1" /> Agregar gasto
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       )}
                     </TableBody>
