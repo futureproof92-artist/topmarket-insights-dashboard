@@ -3,6 +3,8 @@ import React from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 const getUserInfo = (role: string) => {
   const userInfo = {
@@ -98,6 +100,15 @@ const UserLoginPage = () => {
           <h2 className="text-3xl font-bold text-gray-800">TopMarket</h2>
           <p className="text-muted-foreground mt-2">Acceso para {userInfo.name}</p>
         </div>
+
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/')}
+          className="mb-4 flex items-center"
+        >
+          <ArrowLeft className="mr-2" size={16} />
+          Menú Principal
+        </Button>
 
         <Card>
           <CardHeader>
