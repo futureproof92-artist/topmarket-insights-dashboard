@@ -1,333 +1,200 @@
 
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "npm:resend@2.0.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.2";
 
-// Inicializar cliente de Resend con la API key
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+// Configuración de Supabase
+const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+const resendApiKey = Deno.env.get("RESEND_API_KEY") as string;
 
-// Inicializar cliente de Supabase
-const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://wpsaktihetvpbykawvxl.supabase.co";
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+// Inicialización del cliente de Supabase
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function getWeekRange() {
+  // Obtener el lunes de la semana siguiente
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 es domingo, 1 es lunes, etc.
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+  
+  // Calcular fecha inicial (lunes próximo)
+  const nextMonday = new Date(now);
+  nextMonday.setDate(now.getDate() + daysUntilMonday);
+  nextMonday.setHours(0, 0, 0, 0);
+  
+  // Calcular fecha final (viernes de la próxima semana)
+  const nextFriday = new Date(nextMonday);
+  nextFriday.setDate(nextMonday.getDate() + 4);
+  
+  // Formatear fechas para display
+  const monthNames = [
+    "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+  ];
+  
+  const formatDate = (date: Date) => {
+    const day = date.getDate();
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day} de ${month} ${year}`;
+  };
+  
+  return {
+    fromDate: nextMonday,
+    toDate: nextFriday,
+    displayText: `Lun ${formatDate(nextMonday)} – Vie ${formatDate(nextFriday)}`
+  };
+}
 
-// Plantillas de correo personalizadas por rol
-const emailTemplates: Record<string, { subject: string; body: (nombre: string) => string }> = {
-  evelyn: {
-    subject: "TopMarket: Recordatorio de registro de Ventas y Prospecciones",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #004d99;">¡Hola ${nombre}!</h2>
-        
-        <p>Espero que hayas tenido una excelente semana llena de éxitos y buenos resultados. 😊</p>
-        
-        <p>Este es un recordatorio amistoso para que actualices tu <strong>reporte semanal de ventas y prospecciones</strong> en el sistema. Tus datos son fundamentales para medir nuestro avance como equipo y tomar decisiones informadas.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #004d99; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>¿Qué necesitas registrar?</strong></p>
-          <ul>
-            <li>Leads generados (PUB EM, PUB CL, FRIO EM, FRIO CL)</li>
-            <li>Ventas cerradas</li>
-            <li>Detalles de cada venta (cliente, ubicación, tipo, costo, etc.)</li>
-          </ul>
-        </div>
-        
-        <p>Tus reportes semanales nos ayudan a visualizar tendencias y mejorar nuestras estrategias comerciales.</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/ventas" style="display: inline-block; background-color: #004d99; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Actualizar mi reporte ahora</a>
-        
-        <p>¡Gracias por tu dedicación y compromiso con TopMarket!</p>
-        
-        <p style="margin-bottom: 5px;">Saludos cordiales,</p>
-        <p style="font-weight: bold; margin-top: 0;">El equipo de TopMarket</p>
-      </div>
-    `
-  },
-  davila: {
-    subject: "TopMarket: Recordatorio de actualización de PXR Cerrados",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #009966;">¡Hola ${nombre}!</h2>
-        
-        <p>Espero que tu semana esté yendo genial. 🌟</p>
-        
-        <p>Es viernes y ya sabes lo que eso significa - ¡es momento de actualizar tus <strong>PXR Cerrados</strong> en el sistema! Esta información es crucial para nuestro seguimiento y para asegurar que todos nuestros procesos operativos estén alineados.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #009966; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Por favor recuerda incluir:</strong></p>
-          <ul>
-            <li>Todos los PXR cerrados esta semana</li>
-            <li>Detalles de cada proyecto</li>
-            <li>Estatus actual y próximos pasos</li>
-          </ul>
-        </div>
-        
-        <p>Tu consistencia en el registro de esta información nos ayuda enormemente a mantener una visión clara del negocio.</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/pxr-cerrados" style="display: inline-block; background-color: #009966; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Ir a mi sección de PXR</a>
-        
-        <p>¡Gracias por tu excelente trabajo y por mantener actualizada esta información tan valiosa!</p>
-        
-        <p style="margin-bottom: 5px;">Un cordial saludo,</p>
-        <p style="font-weight: bold; margin-top: 0;">El equipo de TopMarket</p>
-      </div>
-    `
-  },
-  lilia: {
-    subject: "TopMarket: Recordatorio de actualización de HH Cerrados",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #663399;">¡Hola ${nombre}!</h2>
-        
-        <p>Espero que hayas tenido una semana productiva. ✨</p>
-        
-        <p>Te escribo para recordarte que es momento de actualizar tus <strong>HH Cerrados</strong> de la semana en el sistema. Esta información es fundamental para nuestro análisis de rendimiento y para la coordinación con el resto de equipos.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #663399; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Es importante que actualices:</strong></p>
-          <ul>
-            <li>Todos los proyectos HH cerrados esta semana</li>
-            <li>Horas facturables por cliente</li>
-            <li>Estatus de cada proyecto</li>
-          </ul>
-        </div>
-        
-        <p>Tu contribución al mantener esta información al día es esencial para nuestra operación y planificación estratégica.</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/hh-cerrados" style="display: inline-block; background-color: #663399; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Actualizar HH Cerrados</a>
-        
-        <p>¡Muchas gracias por tu dedicación y precisión en el registro de esta información!</p>
-        
-        <p style="margin-bottom: 5px;">Saludos cordiales,</p>
-        <p style="font-weight: bold; margin-top: 0;">El equipo de TopMarket</p>
-      </div>
-    `
-  },
-  karla: {
-    subject: "TopMarket: Recordatorio de actualización de Reclutamiento Interno",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #e67e22;">¡Hola ${nombre}!</h2>
-        
-        <p>Feliz viernes! 🎉</p>
-        
-        <p>Es momento de actualizar la información de <strong>Reclutamiento Interno</strong> en nuestro sistema. Tus datos son esenciales para poder mantener una visión clara de nuestro pipeline de talento y planificar adecuadamente.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #e67e22; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Por favor, asegúrate de actualizar:</strong></p>
-          <ul>
-            <li>Candidatos en proceso</li>
-            <li>Posiciones cubiertas esta semana</li>
-            <li>Vacantes activas y requisitos</li>
-            <li>Estado de las entrevistas programadas</li>
-          </ul>
-        </div>
-        
-        <p>Tu trabajo es fundamental para asegurar que TopMarket cuente con el mejor talento posible. ¡Gracias por mantener esta información actualizada!</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/reclutamiento" style="display: inline-block; background-color: #e67e22; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Ir a Reclutamiento</a>
-        
-        <p>Agradecemos tu dedicación y compromiso con nuestros procesos de reclutamiento.</p>
-        
-        <p style="margin-bottom: 5px;">Saludos cordiales,</p>
-        <p style="font-weight: bold; margin-top: 0;">El equipo de TopMarket</p>
-      </div>
-    `
-  },
-  nataly: {
-    subject: "TopMarket: Recordatorio de actualización de Cobranza",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #c0392b;">¡Hola ${nombre}!</h2>
-        
-        <p>Espero que hayas tenido una excelente semana. 💼</p>
-        
-        <p>Es viernes y necesitamos que actualices la información de <strong>Cobranza</strong> en nuestro sistema. Estos datos son críticos para nuestra salud financiera y la planificación de flujo de caja de la empresa.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #c0392b; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Por favor actualiza:</strong></p>
-          <ul>
-            <li>Pagos recibidos esta semana</li>
-            <li>Facturas pendientes y su antigüedad</li>
-            <li>Comunicaciones con clientes sobre pagos</li>
-            <li>Proyecciones de cobro para la próxima semana</li>
-          </ul>
-        </div>
-        
-        <p>Tu meticulosidad en el seguimiento de la cobranza es fundamental para que TopMarket pueda operar con eficiencia y cumplir con todos nuestros compromisos.</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/cobranza" style="display: inline-block; background-color: #c0392b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Actualizar Cobranza</a>
-        
-        <p>¡Muchas gracias por tu invaluable labor en la gestión de nuestras finanzas!</p>
-        
-        <p style="margin-bottom: 5px;">Un cordial saludo,</p>
-        <p style="font-weight: bold; margin-top: 0;">El equipo de TopMarket</p>
-      </div>
-    `
-  },
-  admin: {
-    subject: "TopMarket: Resumen semanal del Dashboard",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #2c3e50;">¡Hola ${nombre}!</h2>
-        
-        <p>Espero que hayas tenido una semana productiva. 📊</p>
-        
-        <p>Es momento de revisar el <strong>Dashboard Maestro</strong> para analizar el progreso de la semana. Como administrador, tu visión general es crucial para guiar a todos los equipos.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #2c3e50; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Puntos a revisar:</strong></p>
-          <ul>
-            <li>Cumplimiento de actualizaciones por cada equipo</li>
-            <li>Tendencias en ventas y leads</li>
-            <li>Procesos de reclutamiento activos</li>
-            <li>Estado de cobranza y finanzas</li>
-            <li>Proyectos PXR y HH en curso</li>
-          </ul>
-        </div>
-        
-        <p>Tu liderazgo en el análisis de estos datos es fundamental para identificar áreas de oportunidad y tomar decisiones estratégicas para TopMarket.</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/admin" style="display: inline-block; background-color: #2c3e50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Ver Dashboard Maestro</a>
-        
-        <p>¡Gracias por tu compromiso con la excelencia operativa de TopMarket!</p>
-        
-        <p style="margin-bottom: 5px;">Saludos cordiales,</p>
-        <p style="font-weight: bold; margin-top: 0;">El sistema de TopMarket</p>
-      </div>
-    `
-  },
-  default: {
-    subject: "TopMarket: Recordatorio de actualización semanal",
-    body: (nombre) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-        <h2 style="color: #3498db;">¡Hola ${nombre}!</h2>
-        
-        <p>Espero que hayas tenido una gran semana. 👋</p>
-        
-        <p>Este es un recordatorio amistoso para que actualices tu información semanal en el dashboard de TopMarket. Tu contribución es esencial para mantener nuestros sistemas actualizados.</p>
-        
-        <div style="background-color: #f5f5f5; border-left: 4px solid #3498db; padding: 15px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Recuerda actualizar:</strong></p>
-          <ul>
-            <li>Datos relevantes de tu área</li>
-            <li>Métricas semanales</li>
-            <li>Información pendiente en el sistema</li>
-          </ul>
-        </div>
-        
-        <p>Mantener esta información al día nos ayuda a todos a trabajar mejor como equipo.</p>
-        
-        <a href="https://topmarket-dashboard.lovable.dev/" style="display: inline-block; background-color: #3498db; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-top: 15px; margin-bottom: 15px;">Ir al Dashboard</a>
-        
-        <p>¡Gracias por tu colaboración!</p>
-        
-        <p style="margin-bottom: 5px;">Saludos cordiales,</p>
-        <p style="font-weight: bold; margin-top: 0;">El equipo de TopMarket</p>
-      </div>
-    `
+// Función para enviar correos con Resend
+async function sendReminder(recipient: { email: string; nombre: string; role: string; }) {
+  if (!resendApiKey) {
+    console.error("Error: RESEND_API_KEY no está configurado");
+    return { error: "API key no configurada" };
   }
-};
 
-// Función para enviar correos electrónicos a todos los usuarios
-async function enviarRecordatorios(): Promise<{ exito: number; fallidos: number }> {
+  const weekRange = getWeekRange();
+
+  // Personalización del mensaje según el rol
+  let subject = "";
+  let messageContent = "";
+
+  switch (recipient.role) {
+    case "evelyn":
+      subject = "⚠️ Recordatorio: Registrar ventas de la próxima semana";
+      messageContent = `
+        <p>Hola Evelyn,</p>
+        <p>Te recordamos que debes registrar tus ventas para la semana del ${weekRange.displayText}.</p>
+        <p>No olvides incluir:</p>
+        <ul>
+          <li>Leads públicos (email y cliente)</li>
+          <li>Leads en frío (email y cliente)</li>
+          <li>Ventas cerradas</li>
+          <li>Detalles de cada venta (cliente, ubicación, tipo de servicio, etc.)</li>
+        </ul>
+        <p>Por favor, mantén esta información actualizada para que podamos tener un seguimiento preciso de nuestro funnel de ventas.</p>
+        <p>¡Gracias por tu colaboración!</p>
+        <p>Saludos,<br>El equipo de TopMarket</p>
+      `;
+      break;
+    case "davila":
+      subject = "📊 Recordatorio: Actualización de PXR cerrados semanal";
+      messageContent = `
+        <p>Hola Gaby,</p>
+        <p>Es importante que actualices el registro de PXR cerrados para la semana del ${weekRange.displayText}.</p>
+        <p>Recuerda ingresar:</p>
+        <ul>
+          <li>El monto total cerrado</li>
+          <li>Las mejores cuentas de la semana</li>
+        </ul>
+        <p>Esta información es crucial para el seguimiento de los KPIs del equipo.</p>
+        <p>¡Gracias por tu apoyo!</p>
+        <p>Saludos,<br>El equipo de TopMarket</p>
+      `;
+      break;
+    default: // Para admin u otros roles
+      subject = "🔔 Recordatorio: Actualización de datos semanal";
+      messageContent = `
+        <p>Hola ${recipient.nombre},</p>
+        <p>Te recordamos que debes actualizar la información de tu área para la próxima semana (${weekRange.displayText}).</p>
+        <p>Por favor, asegúrate de que todos los datos relevantes estén correctamente registrados en el sistema.</p>
+        <p>¡Gracias por tu colaboración!</p>
+        <p>Saludos,<br>El equipo de TopMarket</p>
+      `;
+  }
+
   try {
-    // Obtener todos los usuarios desde la tabla de usuarios_roles
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${resendApiKey}`
+      },
+      body: JSON.stringify({
+        from: "TopMarket <notificaciones@topmarket.com.mx>",
+        to: recipient.email,
+        subject: subject,
+        html: messageContent
+      })
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`Error al enviar correo a ${recipient.email}:`, errorText);
+      return { error: errorText };
+    }
+
+    const data = await res.json();
+    return { data };
+  } catch (error) {
+    console.error(`Error al enviar correo a ${recipient.email}:`, error);
+    return { error };
+  }
+}
+
+serve(async (req) => {
+  // Verificar autorización
+  // Solo permitir cuando viene de CRON o con una clave válida
+  const authHeader = req.headers.get("Authorization");
+  
+  if (authHeader !== "Bearer CRON" && authHeader !== `Bearer ${supabaseKey}`) {
+    return new Response(
+      JSON.stringify({ error: "No autorizado" }),
+      { status: 401, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    // Buscar todos los usuarios
     const { data: usuarios, error } = await supabase
       .from("usuarios_roles")
       .select("*");
 
     if (error) {
-      console.error("Error al obtener usuarios:", error);
-      throw new Error(error.message);
+      throw new Error(`Error al obtener usuarios: ${error.message}`);
     }
 
-    console.log(`Enviando recordatorios a ${usuarios.length} usuarios`);
-
-    let exito = 0;
-    let fallidos = 0;
-
-    // Enviar correo a cada usuario
-    for (const usuario of usuarios) {
-      try {
-        const template = emailTemplates[usuario.role] || emailTemplates.default;
-        
-        const { data: emailResponse, error: emailError } = await resend.emails.send({
-          from: "TopMarket Dashboard <no-reply@resend.dev>",
-          to: [usuario.email],
-          subject: template.subject,
-          html: template.body(usuario.nombre),
-        });
-
-        if (emailError) {
-          console.error(`Error al enviar correo a ${usuario.email}:`, emailError);
-          fallidos++;
-        } else {
-          console.log(`Correo enviado exitosamente a ${usuario.email}`);
-          exito++;
-        }
-      } catch (err) {
-        console.error(`Error inesperado al enviar correo a ${usuario.email}:`, err);
-        fallidos++;
-      }
+    if (!usuarios || usuarios.length === 0) {
+      return new Response(
+        JSON.stringify({ message: "No se encontraron usuarios para notificar" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    return { exito, fallidos };
-  } catch (error) {
-    console.error("Error general en el proceso de envío:", error);
-    throw error;
-  }
-}
+    // Filtrar usuarios para enviar recordatorios a roles específicos: evelyn, davila, admin
+    const usuariosParaNotificar = usuarios.filter(
+      u => ["evelyn", "davila", "admin", "sergio"].includes(u.role)
+    );
 
-// Manejador principal para la función
-serve(async (req) => {
-  // Manejar solicitudes OPTIONS para CORS
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+    // Enviar recordatorios
+    const resultados = await Promise.all(
+      usuariosParaNotificar.map(usuario => sendReminder(usuario))
+    );
 
-  try {
-    // Verificar si es una solicitud programada o manual
-    const isScheduled = req.headers.get("Authorization") === "Bearer CRON";
-    
-    // Si es manual, verificar el método
-    if (!isScheduled && req.method !== "POST") {
-      return new Response(JSON.stringify({ error: "Método no permitido" }), {
-        status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Enviar los recordatorios
-    const resultado = await enviarRecordatorios();
+    // Resumen de resultados
+    const summary = {
+      total: usuariosParaNotificar.length,
+      enviados: resultados.filter(r => !r.error).length,
+      errores: resultados.filter(r => r.error).length,
+      detalles: usuariosParaNotificar.map((u, i) => ({
+        email: u.email,
+        exito: !resultados[i].error,
+        error: resultados[i].error || null
+      }))
+    };
 
     return new Response(
-      JSON.stringify({
-        mensaje: "Proceso de envío de recordatorios completado",
-        resultado,
-        timestamp: new Date().toISOString(),
+      JSON.stringify({ 
+        message: "Recordatorios de registro semanal enviados", 
+        resultados: summary 
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error en la función:", error);
+    console.error("Error al procesar recordatorios:", error);
     
     return new Response(
-      JSON.stringify({
-        error: error.message || "Error interno del servidor",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: "Error al procesar los recordatorios", detalles: error.message }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 });

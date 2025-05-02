@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -120,6 +121,16 @@ const VentasPage = () => {
             
           if (ventasError) throw ventasError;
           
+          // Convertir los tipos de servicio de string a los tipos específicos
+          const ventasFormateadas: VentaDetalle[] = ventasData ? ventasData.map(venta => ({
+            id: venta.id,
+            cliente: venta.cliente,
+            ubicacion: venta.ubicacion,
+            tipo_servicio: venta.tipo_servicio as 'PXR' | 'HH' | 'OTRO',
+            costo_unitario: Number(venta.costo_unitario),
+            total_vacs: venta.total_vacs
+          })) : [];
+          
           return {
             semana: semana.semana,
             leads: {
@@ -129,7 +140,7 @@ const VentasPage = () => {
               leads_frio_cl: semana.leads_frio_cl || 0,
               ventas_cerradas: semana.ventas_cerradas || 0
             },
-            ventasDetalle: ventasData || []
+            ventasDetalle: ventasFormateadas
           };
         })
       );
@@ -155,7 +166,7 @@ const VentasPage = () => {
         .from('historial_semanal')
         .select('*')
         .eq('semana', currentWeek.displayText)
-        .single();
+        .maybeSingle();
         
       if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
         throw errorBusqueda;
@@ -180,7 +191,17 @@ const VentasPage = () => {
         if (ventasError) throw ventasError;
         
         if (ventasData && ventasData.length > 0) {
-          setVentasDetalle(ventasData);
+          // Convertir los tipos de servicio de string a los tipos específicos
+          const ventasFormateadas: VentaDetalle[] = ventasData.map(venta => ({
+            id: venta.id,
+            cliente: venta.cliente,
+            ubicacion: venta.ubicacion,
+            tipo_servicio: venta.tipo_servicio as 'PXR' | 'HH' | 'OTRO',
+            costo_unitario: Number(venta.costo_unitario),
+            total_vacs: venta.total_vacs
+          }));
+          
+          setVentasDetalle(ventasFormateadas);
         } else {
           // Si no hay ventas detalle pero sí hay ventas cerradas, crear filas vacías
           if (semanaExistente.ventas_cerradas > 0) {
