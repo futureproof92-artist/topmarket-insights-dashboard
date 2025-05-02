@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserCheck, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
 interface SidebarProps {
   user?: {
     role: string;
@@ -12,6 +13,7 @@ interface SidebarProps {
   impersonatedRole?: string | null;
   onImpersonate?: (role: string | null) => void;
 }
+
 export const Sidebar = ({
   user,
   impersonatedRole,
@@ -24,6 +26,7 @@ export const Sidebar = ({
 
   // Use the impersonated role if available, otherwise use the actual role
   const activeRole = impersonatedRole || user?.role;
+  
   const getNavItems = (role: string) => {
     switch (role) {
       case 'evelyn':
@@ -46,7 +49,7 @@ export const Sidebar = ({
         }];
       case 'karla':
         return [{
-          name: 'Reclutamiento',
+          name: 'Karla Casillas (Reclu Interno)',
           path: '/reclutamiento'
         }];
       case 'nataly':
@@ -70,6 +73,7 @@ export const Sidebar = ({
         }];
     }
   };
+  
   const navItems = activeRole ? getNavItems(activeRole) : [];
 
   // User roles for impersonation
@@ -88,12 +92,13 @@ export const Sidebar = ({
   }, {
     role: 'karla',
     name: 'Karla Casillas',
-    description: 'Reclutamiento'
+    description: 'Reclu Interno'
   }, {
     role: 'nataly',
     name: 'Nataly Zarate',
     description: 'Cobranza'
   }];
+  
   const handleImpersonate = (role: string | null) => {
     if (onImpersonate) {
       onImpersonate(role);
@@ -110,6 +115,7 @@ export const Sidebar = ({
       }
     }
   };
+  
   return <aside className="w-full md:w-64 bg-sidebar border-r border-border">
       <div className="flex flex-col h-full">
         <div className="p-4">

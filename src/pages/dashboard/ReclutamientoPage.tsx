@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -107,7 +106,7 @@ const ReclutamientoPage = () => {
     }
   }, [weeksData]);
 
-  // Función para formatear el ID de la semana para mostrar en la UI
+  // Funci��n para formatear el ID de la semana para mostrar en la UI
   const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
     return `${format(weekStart, "d", { locale: es })}-${format(weekEnd, "d 'de' MMMM", { locale: es })}`;
   };
@@ -231,7 +230,7 @@ const ReclutamientoPage = () => {
               </div>
               <div>
                 <Label htmlFor="freelancersConfirmados" className="block text-sm font-medium mb-2">
-                  Freelancers confirmados esta semana
+                  Reclutamientos confirmados de freelancers esta semana
                 </Label>
                 <Input
                   id="freelancersConfirmados"
@@ -253,14 +252,14 @@ const ReclutamientoPage = () => {
         {/* Tarjetas de KPI - visible para todos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <DashboardCard
-            title="Total Reclutamientos Confirmados"
+            title="Reclutamientos confirmados esta semana"
             value={currentWeekData?.totalRecruitments || 0}
             description="Reclutamientos confirmados en la semana"
             trend={{ value: 8, isPositive: true }}
           />
           
           <DashboardCard
-            title="Total Freelancers Confirmados"
+            title="Reclutamientos confirmados de freelancers esta semana"
             value={currentWeekData?.totalFreelancers || 0}
             description="Freelancers confirmados en la semana"
             trend={{ value: 5, isPositive: true }}

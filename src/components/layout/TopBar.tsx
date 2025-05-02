@@ -48,7 +48,7 @@ function getPageTitle(role?: string): string {
     case 'lilia':
       return 'Mis HH Cerrados';
     case 'karla':
-      return 'Reclutamiento';
+      return 'Karla Casillas (Reclu Interno)';
     case 'nataly':
     case 'cobranza':
       return 'Mi Cobranza';
