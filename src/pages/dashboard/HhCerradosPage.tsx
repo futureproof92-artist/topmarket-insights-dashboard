@@ -8,10 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
+import { DateRangeSelector } from '@/components/ventas/DateRangeSelector';
 
 // Tipos para los datos de HH cerrados
 interface WeeklyHhData {
@@ -65,6 +67,7 @@ const generateChartData = (weeklyData: WeeklyHhData[]) => {
 const HhCerradosPage = () => {
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [weeklyData, setWeeklyData] = useState<WeeklyHhData[]>([]);
+  const [filteredData, setFilteredData] = useState<WeeklyHhData[]>([]);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{
     cuentasCerradas: number;
@@ -72,6 +75,14 @@ const HhCerradosPage = () => {
   }>({
     cuentasCerradas: 0,
     montoCerrado: 0
+  });
+  
+  // Añadimos estado para el selector de rango de fechas
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const currentDate = new Date(2025, 4, 2); // 2 de mayo de 2025
+    const from = startOfWeek(currentDate, { weekStartsOn: 1 });
+    const to = endOfWeek(currentDate, { weekStartsOn: 1 });
+    return { from, to };
   });
   
   useEffect(() => {
@@ -84,10 +95,32 @@ const HhCerradosPage = () => {
     // Generar los datos de semanas basados en la fecha actual
     setWeeklyData(generateWeeklyData());
   }, []);
+  
+  useEffect(() => {
+    // Filtrar datos basados en el rango de fechas seleccionado
+    if (dateRange && dateRange.from && dateRange.to) {
+      const filtered = weeklyData.filter(week => {
+        const weekStart = parseISO(week.startDate.split('/').reverse().join('-'));
+        const weekEnd = parseISO(week.endDate.split('/').reverse().join('-'));
+        
+        // Verificar si hay superposición entre el rango seleccionado y la semana
+        return (
+          isWithinInterval(dateRange.from, { start: weekStart, end: weekEnd }) ||
+          isWithinInterval(dateRange.to, { start: weekStart, end: weekEnd }) ||
+          isWithinInterval(weekStart, { start: dateRange.from, end: dateRange.to })
+        );
+      });
+      
+      setFilteredData(filtered);
+    } else {
+      setFilteredData(weeklyData);
+    }
+  }, [weeklyData, dateRange]);
 
-  const totalCuentasCerradas = weeklyData.reduce((sum, week) => sum + week.cuentasCerradas, 0);
-  const totalMontoCerrado = weeklyData.reduce((sum, week) => sum + week.montoCerrado, 0);
-  const chartData = generateChartData(weeklyData);
+  // Calculamos totales basados en los datos filtrados
+  const totalCuentasCerradas = filteredData.reduce((sum, week) => sum + week.cuentasCerradas, 0);
+  const totalMontoCerrado = filteredData.reduce((sum, week) => sum + week.montoCerrado, 0);
+  const chartData = generateChartData(filteredData);
 
   const handleEdit = (row: WeeklyHhData) => {
     setEditingRowId(row.id);
@@ -135,9 +168,17 @@ const HhCerradosPage = () => {
   return (
     <AppShell user={user}>
       <div className="space-y-6">
-        {/* Mostramos la fecha actual */}
-        <div className="text-lg font-medium text-gray-800">
-          {formattedDate}
+        {/* Fecha actual y selector de rango */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="text-lg font-medium text-gray-800">
+            {formattedDate}
+          </div>
+          
+          {/* Agregamos el selector de rango de fechas */}
+          <DateRangeSelector 
+            dateRange={dateRange}
+            onDateRangeChange={setDateRange}
+          />
         </div>
         
         {/* KPI Cards para ambos tipos de usuarios */}
@@ -174,7 +215,7 @@ const HhCerradosPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {weeklyData.map((week) => (
+                {filteredData.map((week) => (
                   <TableRow key={week.id}>
                     <TableCell>Semana {week.weekNumber}</TableCell>
                     <TableCell>{week.startDate} - {week.endDate}</TableCell>
