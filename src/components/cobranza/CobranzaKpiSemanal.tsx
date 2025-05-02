@@ -53,9 +53,6 @@ export const CobranzaKpiSemanal = () => {
     pagosNoConfirmados: 0,
   };
   
-  // Calcular faltante confirmado
-  const faltanteConfirmado = currentWeekData.cobradoTotal - currentWeekData.pagosNoConfirmados;
-  
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
@@ -73,7 +70,7 @@ export const CobranzaKpiSemanal = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <KpiCard
             title="COBRADO TOTAL"
             value={currentWeekData.cobradoTotal}
@@ -81,11 +78,6 @@ export const CobranzaKpiSemanal = () => {
           <KpiCard
             title="PAGOS NO CONFIRMADOS"
             value={currentWeekData.pagosNoConfirmados}
-          />
-          <KpiCard
-            title="FALTANTE CONFIRMADO"
-            value={faltanteConfirmado}
-            description="Cobrado total - Pagos no confirmados"
           />
         </div>
       </CardContent>
