@@ -71,8 +71,8 @@ const CobranzaPage = () => {
         if (error) throw error;
         
         if (data && data.length > 0) {
-          // Sumar todos los montos de cobranza
-          const totalAmount = data.reduce((sum, record) => sum + (parseFloat(record.cobrado_total) || 0), 0);
+          // Sumar todos los montos de cobranza - convertimos a string para la comparación
+          const totalAmount = data.reduce((sum, record) => sum + (parseFloat(String(record.cobrado_total)) || 0), 0);
           setTotalCobranza(totalAmount);
         } else {
           // Si no hay datos para el mes actual, usar datos simulados
