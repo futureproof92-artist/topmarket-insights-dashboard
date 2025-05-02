@@ -1,27 +1,94 @@
 
 import React, { useState, useEffect } from 'react';
+import { format, startOfWeek, endOfWeek, subWeeks, addDays, isWithinInterval } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ChartContainer } from '@/components/dashboard/ChartContainer';
 import { KpiTable } from '@/components/dashboard/KpiTable';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
-// Datos simulados
-const mockData = {
-  pxrRecords: [
-    { id: '1', fecha: '2023-04-03', monto: 35000, detalles: 'Proyecto XR para Cliente A' },
-    { id: '2', fecha: '2023-04-12', monto: 42000, detalles: 'Implementación XR Cliente B' },
-    { id: '3', fecha: '2023-04-18', monto: 28000, detalles: 'Actualización sistema Cliente C' },
-  ],
-  chartData: [
-    { name: 'Ene', pxr: 85000 },
-    { name: 'Feb', pxr: 75000 },
-    { name: 'Mar', pxr: 92000 },
-    { name: 'Abr', pxr: 105000 },
-  ]
+// Interfaces para los datos
+interface WeeklyPxrData {
+  weekId: string;
+  weekStart: Date;
+  weekEnd: Date;
+  total: number;
+  mejoresCuentas: string;
+  records: PxrRecord[];
+}
+
+interface PxrRecord {
+  id: string;
+  fecha: string;
+  monto: number;
+  detalles: string;
+}
+
+// Fecha de referencia: 2 de mayo de 2025
+const CURRENT_DATE = new Date(2025, 4, 2); // Mayo es 4 en JavaScript (0-indexed)
+
+// Generamos datos históricos para 4 semanas
+const generateHistoricalData = () => {
+  const weeksData: WeeklyPxrData[] = [];
+  
+  for (let i = 0; i < 4; i++) {
+    const weekStartDate = startOfWeek(subWeeks(CURRENT_DATE, i), { weekStartsOn: 1 });
+    const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+    
+    // Generar algunos registros para esta semana
+    const weekRecords: PxrRecord[] = [];
+    for (let day = 0; day < 2; day++) {
+      const recordDate = addDays(weekStartDate, day * 2 + 1);
+      weekRecords.push({
+        id: `${i}-${day}`,
+        fecha: format(recordDate, 'yyyy-MM-dd'),
+        monto: Math.floor(Math.random() * 40000) + 20000,
+        detalles: `Proyecto XR Cliente ${String.fromCharCode(65 + i + day)}`
+      });
+    }
+    
+    // Calcular el total de la semana
+    const weekTotal = weekRecords.reduce((sum, record) => sum + record.monto, 0);
+    
+    weeksData.push({
+      weekId: `semana-${format(weekStartDate, 'yyyy-MM-dd')}`,
+      weekStart: weekStartDate,
+      weekEnd: weekEndDate,
+      total: weekTotal,
+      mejoresCuentas: `Cliente ${String.fromCharCode(65 + i)}, Cliente ${String.fromCharCode(66 + i)}`,
+      records: weekRecords
+    });
+  }
+  
+  return weeksData;
 };
 
 const PxrCerradosPage = () => {
+  const { toast } = useToast();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
+  const [weeksData, setWeeksData] = useState<WeeklyPxrData[]>(generateHistoricalData);
+  const [selectedWeekId, setSelectedWeekId] = useState<string>('');
+  const [currentWeekData, setCurrentWeekData] = useState<WeeklyPxrData | null>(null);
+  const [formData, setFormData] = useState({
+    totalCerrado: '',
+    mejoresCuentas: ''
+  });
+  
+  // Determinar si el usuario actual es Gaby Davila
+  const isGabyDavila = user?.email === 'gaby.davila@example.com';
+  const isAdmin = user?.role === 'admin';
   
   useEffect(() => {
     // Obtener el usuario del localStorage
@@ -30,9 +97,93 @@ const PxrCerradosPage = () => {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+  
+  useEffect(() => {
+    // Establecer por defecto la semana actual como seleccionada
+    if (weeksData.length > 0) {
+      const currentWeekId = weeksData[0].weekId;
+      setSelectedWeekId(currentWeekId);
+      setCurrentWeekData(weeksData[0]);
+    }
+  }, [weeksData]);
 
-  const totalPxr = mockData.pxrRecords.reduce((sum, record) => sum + record.monto, 0);
+  // Función para formatear el ID de la semana para mostrar en la UI
+  const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
+    return `${format(weekStart, "d", { locale: es })}-${format(weekEnd, "d 'de' MMMM", { locale: es })}`;
+  };
+  
+  // Manejar cambio de semana seleccionada
+  const handleWeekChange = (weekId: string) => {
+    setSelectedWeekId(weekId);
+    const selected = weeksData.find(week => week.weekId === weekId);
+    if (selected) {
+      setCurrentWeekData(selected);
+      
+      // Si es Gaby, actualizar el formulario con los datos de la semana
+      if (isGabyDavila && selected) {
+        setFormData({
+          totalCerrado: selected.total.toString(),
+          mejoresCuentas: selected.mejoresCuentas || ''
+        });
+      }
+    }
+  };
+  
+  // Manejar cambios en el formulario
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Guardar datos del formulario
+  const handleSaveData = () => {
+    if (!currentWeekData) return;
+    
+    // Validar entrada numérica para el total
+    const totalValue = parseFloat(formData.totalCerrado);
+    if (isNaN(totalValue)) {
+      toast({
+        title: "Error",
+        description: "El valor del total debe ser numérico",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Actualizar la semana con los datos ingresados
+    const updatedWeeksData = weeksData.map(week => {
+      if (week.weekId === selectedWeekId) {
+        return {
+          ...week,
+          total: totalValue,
+          mejoresCuentas: formData.mejoresCuentas
+        };
+      }
+      return week;
+    });
+    
+    setWeeksData(updatedWeeksData);
+    setCurrentWeekData({
+      ...currentWeekData,
+      total: totalValue,
+      mejoresCuentas: formData.mejoresCuentas
+    });
+    
+    toast({
+      title: "Datos guardados",
+      description: "La información se ha actualizado correctamente"
+    });
+  };
+  
+  // Preparar datos para la gráfica
+  const chartData = weeksData.map(week => ({
+    name: formatWeekLabel(week.weekStart, week.weekEnd),
+    pxr: Math.round(week.total / 1000) // Convertir a miles de MXN
+  })).reverse(); // Reversa para que las semanas más antiguas aparezcan primero
 
+  // Calcular el total acumulado de PXR cerrados
+  const totalPxr = currentWeekData ? currentWeekData.total : 0;
+  
   if (!user) {
     return <div>Cargando...</div>;
   }
@@ -40,28 +191,99 @@ const PxrCerradosPage = () => {
   return (
     <AppShell user={user}>
       <div className="space-y-6">
+        {/* Selector de semana - visible para todos */}
+        <div className="mb-6">
+          <Label htmlFor="week-select" className="block text-sm font-medium mb-2">
+            Seleccionar Semana
+          </Label>
+          <Select value={selectedWeekId} onValueChange={handleWeekChange}>
+            <SelectTrigger className="w-full md:w-[300px]">
+              <SelectValue placeholder="Seleccionar semana" />
+            </SelectTrigger>
+            <SelectContent>
+              {weeksData.map(week => (
+                <SelectItem key={week.weekId} value={week.weekId}>
+                  Semana del {formatWeekLabel(week.weekStart, week.weekEnd)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Vista específica para Gaby Davila */}
+        {isGabyDavila && (
+          <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+            <h2 className="text-xl font-semibold">Registro de PXR Cerrados</h2>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="totalCerrado" className="block text-sm font-medium mb-2">
+                  Total cerrado (MXN)
+                </Label>
+                <Input
+                  id="totalCerrado"
+                  name="totalCerrado"
+                  type="number"
+                  placeholder="Ingresa el monto total en MXN"
+                  value={formData.totalCerrado}
+                  onChange={handleFormChange}
+                  className="w-full md:w-[300px]"
+                />
+              </div>
+              <div>
+                <Label htmlFor="mejoresCuentas" className="block text-sm font-medium mb-2">
+                  Mejores cuentas de la semana
+                </Label>
+                <Textarea
+                  id="mejoresCuentas"
+                  name="mejoresCuentas"
+                  placeholder="Describe las mejores cuentas de esta semana"
+                  value={formData.mejoresCuentas}
+                  onChange={handleFormChange}
+                  className="h-24 w-full md:w-[500px]"
+                />
+              </div>
+              <Button onClick={handleSaveData} className="mt-4">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Tarjeta de KPI - visible para todos */}
         <DashboardCard
           title="Total PXR Cerrados"
           value={`$${totalPxr.toLocaleString('es-MX')}`}
-          description="Monto total de proyectos XR cerrados"
+          description="Monto total de proyectos XR cerrados en la semana"
           trend={{ value: 14, isPositive: true }}
           className="w-full md:w-1/2"
         />
         
-        <ChartContainer
-          title="Resumen Mensual de PXR"
-          data={mockData.chartData}
-          series={[
-            { name: 'Monto PXR', dataKey: 'pxr', color: '#0045FF' },
-          ]}
-          type="bar"
-        />
-        
-        <KpiTable 
-          data={mockData.pxrRecords} 
-          title="Historial de PXR Cerrados" 
-          onExportCSV={() => console.log('Export CSV PXR')}
-        />
+        {/* Vista adicional para administradores */}
+        {isAdmin && !isGabyDavila && (
+          <>
+            <ChartContainer
+              title="Resumen Semanal de PXR Cerrados (Miles MXN)"
+              data={chartData}
+              series={[
+                { name: 'Monto PXR', dataKey: 'pxr', color: '#0045FF' },
+              ]}
+              type="bar"
+            />
+            
+            {currentWeekData && currentWeekData.mejoresCuentas && (
+              <div className="bg-white p-6 rounded-lg border shadow-sm">
+                <h3 className="text-lg font-medium mb-4">Mejores cuentas de la semana</h3>
+                <p className="text-gray-700">{currentWeekData.mejoresCuentas}</p>
+              </div>
+            )}
+            
+            <KpiTable 
+              data={currentWeekData?.records || []} 
+              title="Historial de PXR Cerrados" 
+              onExportCSV={() => console.log('Export CSV PXR')}
+            />
+          </>
+        )}
       </div>
     </AppShell>
   );
