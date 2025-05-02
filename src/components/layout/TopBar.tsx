@@ -47,6 +47,8 @@ function getPageTitle(role?: string): string {
       return 'Mis PXR Cerrados';
     case 'lilia':
       return 'Mis HH Cerrados';
+    case 'karla':
+      return 'Reclutamiento';
     case 'nataly':
     case 'cobranza':
       return 'Mi Cobranza';
@@ -65,6 +67,8 @@ function getUserName(role: string): string {
       return 'Gaby Davila';
     case 'lilia':
       return 'Lilia Morales';
+    case 'karla':
+      return 'Karla Casillas';
     case 'nataly':
     case 'cobranza':
       return 'Nataly Zarate';

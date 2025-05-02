@@ -44,6 +44,11 @@ export const Sidebar = ({
           name: 'Mis HH Cerrados',
           path: '/hh-cerrados'
         }];
+      case 'karla':
+        return [{
+          name: 'Reclutamiento',
+          path: '/reclutamiento'
+        }];
       case 'nataly':
       case 'cobranza':
         return [{
@@ -80,6 +85,10 @@ export const Sidebar = ({
     role: 'lilia',
     name: 'Lilia Morales',
     description: 'HH Cerrados'
+  }, {
+    role: 'karla',
+    name: 'Karla Casillas',
+    description: 'Reclutamiento'
   }, {
     role: 'nataly',
     name: 'Nataly Zarate',
