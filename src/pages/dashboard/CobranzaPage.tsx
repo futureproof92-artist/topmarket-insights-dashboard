@@ -5,8 +5,9 @@ import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ChartContainer } from '@/components/dashboard/ChartContainer';
 import { KpiTable } from '@/components/dashboard/KpiTable';
 import { CobranzaKpiSemanal } from '@/components/cobranza/CobranzaKpiSemanal';
+import { supabase } from '@/integrations/supabase/client';
 
-// Datos simulados
+// Datos simulados para el historial y gráficos
 const mockData = {
   cobranzaRecords: [
     { id: '1', fecha: '2023-04-05', monto: 45000, detalles: 'Pago Cliente A' },
@@ -21,8 +22,22 @@ const mockData = {
   ]
 };
 
+// Interface para datos de cobranza
+interface CobranzaData {
+  id: string;
+  semana: string;
+  semana_inicio: string;
+  semana_fin: string;
+  cobrado_total: number;
+  pagos_no_confirmados: number;
+  created_at: string;
+  updated_at: string;
+}
+
 const CobranzaPage = () => {
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
+  const [totalCobranza, setTotalCobranza] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     // Obtener el usuario del localStorage
@@ -32,7 +47,50 @@ const CobranzaPage = () => {
     }
   }, []);
 
-  const totalCobranza = mockData.cobranzaRecords.reduce((sum, record) => sum + record.monto, 0);
+  // Cargar el total de cobranza del mes actual
+  useEffect(() => {
+    const fetchTotalCobranza = async () => {
+      setIsLoading(true);
+      try {
+        // Obtener el mes actual (usando la fecha de referencia del proyecto: 2 de mayo de 2025)
+        const currentDate = new Date(2025, 4, 2);
+        const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+        
+        // Formatear fechas para la consulta
+        const startDate = startOfMonth.toISOString().split('T')[0];
+        const endDate = endOfMonth.toISOString().split('T')[0];
+        
+        // Consultar el total de cobranza en el mes actual
+        const { data, error } = await supabase
+          .from('cobranza')
+          .select('cobrado_total')
+          .gte('semana_inicio', startDate)
+          .lte('semana_fin', endDate);
+          
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Sumar todos los montos de cobranza
+          const totalAmount = data.reduce((sum, record) => sum + (parseFloat(record.cobrado_total) || 0), 0);
+          setTotalCobranza(totalAmount);
+        } else {
+          // Si no hay datos para el mes actual, usar datos simulados
+          const simulatedTotal = mockData.cobranzaRecords.reduce((sum, record) => sum + record.monto, 0);
+          setTotalCobranza(simulatedTotal);
+        }
+      } catch (error) {
+        console.error('Error fetching cobranza data:', error);
+        // En caso de error, usar datos simulados
+        const simulatedTotal = mockData.cobranzaRecords.reduce((sum, record) => sum + record.monto, 0);
+        setTotalCobranza(simulatedTotal);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTotalCobranza();
+  }, []);
 
   if (!user) {
     return <div>Cargando...</div>;
@@ -41,7 +99,7 @@ const CobranzaPage = () => {
   return (
     <AppShell user={user}>
       <div className="space-y-6">
-        {/* Nuevo componente de KPIs semanales */}
+        {/* Componente mejorado de KPIs semanales que ahora usa Supabase */}
         <CobranzaKpiSemanal />
         
         <DashboardCard

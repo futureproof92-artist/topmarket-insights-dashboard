@@ -9,6 +9,72 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      cobranza: {
+        Row: {
+          cobrado_total: number
+          created_at: string | null
+          id: string
+          pagos_no_confirmados: number
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          updated_at: string | null
+        }
+        Insert: {
+          cobrado_total?: number
+          created_at?: string | null
+          id?: string
+          pagos_no_confirmados?: number
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          updated_at?: string | null
+        }
+        Update: {
+          cobrado_total?: number
+          created_at?: string | null
+          id?: string
+          pagos_no_confirmados?: number
+          semana?: string
+          semana_fin?: string
+          semana_inicio?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      hh_cerrados: {
+        Row: {
+          created_at: string | null
+          id: string
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          total_cuentas: number
+          total_hh: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          total_cuentas?: number
+          total_hh?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          semana?: string
+          semana_fin?: string
+          semana_inicio?: string
+          total_cuentas?: number
+          total_hh?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       historial_semanal: {
         Row: {
           created_at: string | null
@@ -48,6 +114,72 @@ export type Database = {
           semana?: string
           updated_at?: string | null
           ventas_cerradas?: number | null
+        }
+        Relationships: []
+      }
+      pxr_cerrados: {
+        Row: {
+          created_at: string | null
+          id: string
+          mejores_cuentas: string | null
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          total_pxr: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          mejores_cuentas?: string | null
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          total_pxr?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          mejores_cuentas?: string | null
+          semana?: string
+          semana_fin?: string
+          semana_inicio?: string
+          total_pxr?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      reclutamiento: {
+        Row: {
+          created_at: string | null
+          freelancers_confirmados: number
+          id: string
+          reclutamientos_confirmados: number
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          freelancers_confirmados?: number
+          id?: string
+          reclutamientos_confirmados?: number
+          semana: string
+          semana_fin: string
+          semana_inicio: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          freelancers_confirmados?: number
+          id?: string
+          reclutamientos_confirmados?: number
+          semana?: string
+          semana_fin?: string
+          semana_inicio?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
