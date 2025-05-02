@@ -33,9 +33,6 @@ export const Sidebar = ({
         return [{
           name: 'Mis Ventas',
           path: '/ventas'
-        }, {
-          name: 'Mis Prospecciones',
-          path: '/prospecciones'
         }];
       case 'davila':
         return [{
