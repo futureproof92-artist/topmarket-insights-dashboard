@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { format, subDays, startOfWeek, endOfWeek } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 // Tipos para los datos de HH cerrados
 interface WeeklyHhData {
@@ -21,33 +23,35 @@ interface WeeklyHhData {
   montoCerrado: number;
 }
 
-// Datos simulados para las semanas
-const mockWeeks: WeeklyHhData[] = [
-  { 
-    id: '1', 
-    weekNumber: 18, 
-    startDate: '2023-05-01', 
-    endDate: '2023-05-07', 
-    cuentasCerradas: 3,
-    montoCerrado: 45000
-  },
-  { 
-    id: '2', 
-    weekNumber: 19, 
-    startDate: '2023-05-08', 
-    endDate: '2023-05-14', 
-    cuentasCerradas: 2,
-    montoCerrado: 32000
-  },
-  { 
-    id: '3', 
-    weekNumber: 20, 
-    startDate: '2023-05-15', 
-    endDate: '2023-05-21', 
-    cuentasCerradas: 4,
-    montoCerrado: 56000
-  },
-];
+// Función para generar datos de semanas basados en la fecha actual
+const generateWeeklyData = (): WeeklyHhData[] => {
+  // Usamos el 2 de mayo de 2025 como fecha de referencia
+  const currentDate = new Date(2025, 4, 2); // Mayo es 4 en JavaScript (0-indexed)
+  
+  // Generamos las últimas 3 semanas
+  const weeksData: WeeklyHhData[] = [];
+  
+  for (let i = 0; i < 3; i++) {
+    const weekStartDate = startOfWeek(subDays(currentDate, i * 7), { weekStartsOn: 1 });
+    const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+    
+    // Calculamos el número de semana
+    const weekNumber = Math.ceil(
+      ((weekStartDate.getTime() - new Date(weekStartDate.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7
+    );
+    
+    weeksData.push({
+      id: String(i + 1),
+      weekNumber: weekNumber,
+      startDate: format(weekStartDate, 'dd/MM/yyyy'),
+      endDate: format(weekEndDate, 'dd/MM/yyyy'),
+      cuentasCerradas: Math.floor(Math.random() * 5) + 1, // Valor aleatorio entre 1 y 5
+      montoCerrado: (Math.floor(Math.random() * 5) + 1) * 10000, // Valor aleatorio
+    });
+  }
+  
+  return weeksData.reverse(); // Ordenamos de la más reciente a la más antigua
+};
 
 // Datos para los charts
 const generateChartData = (weeklyData: WeeklyHhData[]) => {
@@ -60,7 +64,7 @@ const generateChartData = (weeklyData: WeeklyHhData[]) => {
 
 const HhCerradosPage = () => {
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
-  const [weeklyData, setWeeklyData] = useState<WeeklyHhData[]>(mockWeeks);
+  const [weeklyData, setWeeklyData] = useState<WeeklyHhData[]>([]);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<{
     cuentasCerradas: number;
@@ -76,6 +80,9 @@ const HhCerradosPage = () => {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    
+    // Generar los datos de semanas basados en la fecha actual
+    setWeeklyData(generateWeeklyData());
   }, []);
 
   const totalCuentasCerradas = weeklyData.reduce((sum, week) => sum + week.cuentasCerradas, 0);
@@ -120,10 +127,19 @@ const HhCerradosPage = () => {
   // Determinar si el usuario es Lilia o Admin para mostrar la vista adecuada
   const isLilia = user.role === 'lilia' || user.email?.includes('lilia');
   const isAdmin = user.role === 'admin' || user.email?.includes('admin');
+  
+  // Formatear la fecha actual para mostrar en la interfaz
+  const currentDate = new Date(2025, 4, 2);
+  const formattedDate = format(currentDate, "EEEE d 'de' MMMM yyyy", { locale: es });
 
   return (
     <AppShell user={user}>
       <div className="space-y-6">
+        {/* Mostramos la fecha actual */}
+        <div className="text-lg font-medium text-gray-800">
+          {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
+        </div>
+        
         {/* KPI Cards para ambos tipos de usuarios */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DashboardCard
