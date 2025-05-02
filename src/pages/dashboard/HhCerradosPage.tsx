@@ -30,10 +30,10 @@ const generateWeeklyData = (): WeeklyHhData[] => {
   // Usamos el 2 de mayo de 2025 como fecha de referencia
   const currentDate = new Date(2025, 4, 2); // Mayo es 4 en JavaScript (0-indexed)
   
-  // Generamos las últimas 3 semanas
+  // Generamos las últimas 4 semanas para mostrar más datos históricos
   const weeksData: WeeklyHhData[] = [];
   
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const weekStartDate = startOfWeek(subDays(currentDate, i * 7), { weekStartsOn: 1 });
     const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
     
@@ -80,7 +80,8 @@ const HhCerradosPage = () => {
   // Añadimos estado para el selector de rango de fechas
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const currentDate = new Date(2025, 4, 2); // 2 de mayo de 2025
-    const from = startOfWeek(currentDate, { weekStartsOn: 1 });
+    // Por defecto, mostramos las últimas 2 semanas antes de la fecha actual
+    const from = startOfWeek(subDays(currentDate, 14), { weekStartsOn: 1 });
     const to = endOfWeek(currentDate, { weekStartsOn: 1 });
     return { from, to };
   });
@@ -275,7 +276,7 @@ const HhCerradosPage = () => {
         {(isAdmin || !isLilia) && (
           <>
             <ChartContainer
-              title="Resumen Mensual de Cuentas HH Cerradas"
+              title="Resumen Semanal de Cuentas HH Cerradas"
               data={chartData}
               series={[
                 { name: 'Cuentas', dataKey: 'cuentas', color: '#0045FF' },
@@ -284,7 +285,7 @@ const HhCerradosPage = () => {
             />
             
             <ChartContainer
-              title="Resumen Mensual de Montos HH Cerrados (Miles MXN)"
+              title="Resumen Semanal de Montos HH Cerrados (Miles MXN)"
               data={chartData}
               series={[
                 { name: 'Monto (Miles)', dataKey: 'monto', color: '#00C853' },
