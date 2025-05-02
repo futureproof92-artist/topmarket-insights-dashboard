@@ -9,7 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      historial_semanal: {
+        Row: {
+          created_at: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          leads_frio_cl: number | null
+          leads_frio_em: number | null
+          leads_pub_cl: number | null
+          leads_pub_em: number | null
+          semana: string
+          updated_at: string | null
+          ventas_cerradas: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id?: string
+          leads_frio_cl?: number | null
+          leads_frio_em?: number | null
+          leads_pub_cl?: number | null
+          leads_pub_em?: number | null
+          semana: string
+          updated_at?: string | null
+          ventas_cerradas?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          fecha_fin?: string
+          fecha_inicio?: string
+          id?: string
+          leads_frio_cl?: number | null
+          leads_frio_em?: number | null
+          leads_pub_cl?: number | null
+          leads_pub_em?: number | null
+          semana?: string
+          updated_at?: string | null
+          ventas_cerradas?: number | null
+        }
+        Relationships: []
+      }
+      usuarios_roles: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          nombre: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          nombre: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          nombre?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ventas_detalle: {
+        Row: {
+          cliente: string
+          costo_unitario: number
+          created_at: string | null
+          historial_id: string | null
+          id: string
+          tipo_servicio: string
+          total_vacs: number
+          ubicacion: string
+          updated_at: string | null
+        }
+        Insert: {
+          cliente: string
+          costo_unitario: number
+          created_at?: string | null
+          historial_id?: string | null
+          id?: string
+          tipo_servicio: string
+          total_vacs: number
+          ubicacion: string
+          updated_at?: string | null
+        }
+        Update: {
+          cliente?: string
+          costo_unitario?: number
+          created_at?: string | null
+          historial_id?: string | null
+          id?: string
+          tipo_servicio?: string
+          total_vacs?: number
+          ubicacion?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ventas_detalle_historial_id_fkey"
+            columns: ["historial_id"]
+            isOneToOne: false
+            referencedRelation: "historial_semanal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

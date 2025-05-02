@@ -1,1 +1,5 @@
+
 project_id = "wpsaktihetvpbykawvxl"
+
+[functions.reminder-emails]
+verify_jwt = false

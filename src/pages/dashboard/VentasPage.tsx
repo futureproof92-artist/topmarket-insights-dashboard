@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -13,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface WeekRange {
   startDate: Date;
@@ -62,195 +63,152 @@ const VentasPage = () => {
   });
 
   const [ventasDetalle, setVentasDetalle] = useState<VentaDetalle[]>([]);
-
   const [isAdmin, setIsAdmin] = useState(false);
-
-  // Datos de ejemplo
-  const semanasMock = [
-    {
-      semana: 'Lun 21 de Abr 2025 – Vie 25 de Abr 2025',
-      leads: {
-        leads_pub_em: 15,
-        leads_pub_cl: 8,
-        leads_frio_em: 12,
-        leads_frio_cl: 5,
-        ventas_cerradas: 3
-      },
-      ventasDetalle: [{
-        id: '1',
-        cliente: 'Empresa ABC',
-        ubicacion: 'CDMX',
-        tipo_servicio: 'PXR' as const,
-        costo_unitario: 5000,
-        total_vacs: 2
-      }, {
-        id: '2',
-        cliente: 'Corporativo XYZ',
-        ubicacion: 'Monterrey',
-        tipo_servicio: 'HH' as const,
-        costo_unitario: 7500,
-        total_vacs: 1
-      }]
-    },
-    {
-      semana: 'Lun 28 de Abr 2025 – Vie 2 de May 2025',
-      leads: {
-        leads_pub_em: 10,
-        leads_pub_cl: 6,
-        leads_frio_em: 8,
-        leads_frio_cl: 4,
-        ventas_cerradas: 2
-      },
-      ventasDetalle: [{
-        id: '3',
-        cliente: 'Servicios Globales',
-        ubicacion: 'CDMX',
-        tipo_servicio: 'OTRO' as const,
-        costo_unitario: 6200,
-        total_vacs: 1
-      }, {
-        id: '4',
-        cliente: 'Empresa ABC',
-        ubicacion: 'CDMX',
-        tipo_servicio: 'PXR' as const,
-        costo_unitario: 4800,
-        total_vacs: 3
-      }]
-    },
-    {
-      semana: 'Lun 5 de May 2025 – Vie 9 de May 2025',
-      leads: {
-        leads_pub_em: 18,
-        leads_pub_cl: 9,
-        leads_frio_em: 14,
-        leads_frio_cl: 7,
-        ventas_cerradas: 5
-      },
-      ventasDetalle: [{
-        id: '5',
-        cliente: 'TechStart',
-        ubicacion: 'Guadalajara',
-        tipo_servicio: 'HH' as const,
-        costo_unitario: 8000,
-        total_vacs: 2
-      }, {
-        id: '6',
-        cliente: 'Innovación Digital',
-        ubicacion: 'Monterrey',
-        tipo_servicio: 'PXR' as const,
-        costo_unitario: 5500,
-        total_vacs: 3
-      }]
-    },
-    {
-      semana: 'Lun 12 de May 2025 – Vie 16 de May 2025',
-      leads: {
-        leads_pub_em: 20,
-        leads_pub_cl: 12,
-        leads_frio_em: 16,
-        leads_frio_cl: 9,
-        ventas_cerradas: 4
-      },
-      ventasDetalle: [{
-        id: '7',
-        cliente: 'Consultora TechPro',
-        ubicacion: 'Puebla',
-        tipo_servicio: 'HH' as const,
-        costo_unitario: 7000,
-        total_vacs: 4
-      }, {
-        id: '8',
-        cliente: 'Servicios Globales',
-        ubicacion: 'CDMX',
-        tipo_servicio: 'OTRO' as const,
-        costo_unitario: 6500,
-        total_vacs: 2
-      }]
-    },
-    {
-      semana: 'Lun 19 de May 2025 – Vie 23 de May 2025',
-      leads: {
-        leads_pub_em: 22,
-        leads_pub_cl: 14,
-        leads_frio_em: 18,
-        leads_frio_cl: 10,
-        ventas_cerradas: 6
-      },
-      ventasDetalle: [{
-        id: '9',
-        cliente: 'Empresa ABC',
-        ubicacion: 'CDMX',
-        tipo_servicio: 'PXR' as const,
-        costo_unitario: 5200,
-        total_vacs: 3
-      }, {
-        id: '10',
-        cliente: 'TechStart',
-        ubicacion: 'Guadalajara',
-        tipo_servicio: 'HH' as const,
-        costo_unitario: 8500,
-        total_vacs: 1
-      }, {
-        id: '11',
-        cliente: 'Corporativo XYZ',
-        ubicacion: 'Monterrey',
-        tipo_servicio: 'PXR' as const,
-        costo_unitario: 7200,
-        total_vacs: 2
-      }]
-    }
-  ];
-  
   const [historialSemanas, setHistorialSemanas] = useState<{
     semana: string;
     leads: LeadsData;
     ventasDetalle: VentaDetalle[];
-  }[]>([{
-    semana: 'Lun 21 de Abr 2025 – Vie 25 de Abr 2025',
-    leads: {
-      leads_pub_em: 15,
-      leads_pub_cl: 8,
-      leads_frio_em: 12,
-      leads_frio_cl: 5,
-      ventas_cerradas: 3
-    },
-    ventasDetalle: [{
-      id: '1',
-      cliente: 'Empresa ABC',
-      ubicacion: 'CDMX',
-      tipo_servicio: 'PXR',
-      costo_unitario: 5000,
-      total_vacs: 2
-    }, {
-      id: '2',
-      cliente: 'Corporativo XYZ',
-      ubicacion: 'Monterrey',
-      tipo_servicio: 'HH',
-      costo_unitario: 7500,
-      total_vacs: 1
-    }]
-  }]);
+  }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
+  // Efecto para cargar el usuario y configurar la interfaz inicial
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
-      
       setIsAdmin(parsedUser.role === 'admin' || parsedUser.email?.includes('sergio.t@topmarket.com.mx'));
     }
-
-    updateVentasDetalleRows(leadsData.ventas_cerradas);
     
-    // Inicializar el historial con datos de ejemplo
-    setHistorialSemanas(semanasMock);
+    loadHistorialSemanas();
+    cargarDatosSemanaActual();
   }, []);
 
+  // Efecto para filtrar datos cuando cambia el rango de fechas
   useEffect(() => {
     if (!dateRange?.from) return;
-    
     console.log("Filtrando datos por rango de fechas:", dateRange);
   }, [dateRange]);
+
+  // Función para cargar el historial de semanas desde Supabase
+  const loadHistorialSemanas = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Obtener todas las entradas del historial semanal
+      const { data: historialData, error: historialError } = await supabase
+        .from('historial_semanal')
+        .select('*')
+        .order('fecha_inicio', { ascending: false });
+        
+      if (historialError) throw historialError;
+      
+      if (!historialData || historialData.length === 0) {
+        setHistorialSemanas([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Para cada semana, obtener sus ventas detalle
+      const historialCompleto = await Promise.all(
+        historialData.map(async (semana) => {
+          const { data: ventasData, error: ventasError } = await supabase
+            .from('ventas_detalle')
+            .select('*')
+            .eq('historial_id', semana.id);
+            
+          if (ventasError) throw ventasError;
+          
+          return {
+            semana: semana.semana,
+            leads: {
+              leads_pub_em: semana.leads_pub_em || 0,
+              leads_pub_cl: semana.leads_pub_cl || 0,
+              leads_frio_em: semana.leads_frio_em || 0,
+              leads_frio_cl: semana.leads_frio_cl || 0,
+              ventas_cerradas: semana.ventas_cerradas || 0
+            },
+            ventasDetalle: ventasData || []
+          };
+        })
+      );
+      
+      setHistorialSemanas(historialCompleto);
+    } catch (error) {
+      console.error("Error al cargar el historial:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el historial de semanas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Función para cargar los datos de la semana actual
+  const cargarDatosSemanaActual = async () => {
+    try {
+      // Verificar si ya existen datos para la semana actual
+      const { data: semanaExistente, error: errorBusqueda } = await supabase
+        .from('historial_semanal')
+        .select('*')
+        .eq('semana', currentWeek.displayText)
+        .single();
+        
+      if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
+        throw errorBusqueda;
+      }
+      
+      if (semanaExistente) {
+        // Cargar los datos de la semana
+        setLeadsData({
+          leads_pub_em: semanaExistente.leads_pub_em || 0,
+          leads_pub_cl: semanaExistente.leads_pub_cl || 0,
+          leads_frio_em: semanaExistente.leads_frio_em || 0,
+          leads_frio_cl: semanaExistente.leads_frio_cl || 0,
+          ventas_cerradas: semanaExistente.ventas_cerradas || 0
+        });
+        
+        // Cargar las ventas detalle
+        const { data: ventasData, error: ventasError } = await supabase
+          .from('ventas_detalle')
+          .select('*')
+          .eq('historial_id', semanaExistente.id);
+          
+        if (ventasError) throw ventasError;
+        
+        if (ventasData && ventasData.length > 0) {
+          setVentasDetalle(ventasData);
+        } else {
+          // Si no hay ventas detalle pero sí hay ventas cerradas, crear filas vacías
+          if (semanaExistente.ventas_cerradas > 0) {
+            updateVentasDetalleRows(semanaExistente.ventas_cerradas);
+          } else {
+            setVentasDetalle([]);
+          }
+        }
+      } else {
+        // Si no existen datos para esta semana, inicializar con valores por defecto
+        setLeadsData({
+          leads_pub_em: 0,
+          leads_pub_cl: 0,
+          leads_frio_em: 0,
+          leads_frio_cl: 0,
+          ventas_cerradas: 0
+        });
+        setVentasDetalle([]);
+      }
+    } catch (error) {
+      console.error("Error al cargar datos de la semana actual:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos de la semana actual",
+        variant: "destructive"
+      });
+    }
+  };
 
   function getWeekRange(date: Date): WeekRange {
     const startDate = startOfWeek(date, {
@@ -272,11 +230,13 @@ const VentasPage = () => {
   const prevWeek = () => {
     const prevWeekStart = addDays(currentWeek.startDate, -7);
     setCurrentWeek(getWeekRange(prevWeekStart));
+    cargarDatosSemanaActual();
   };
 
   const nextWeek = () => {
     const nextWeekStart = addDays(currentWeek.startDate, 7);
     setCurrentWeek(getWeekRange(nextWeekStart));
+    cargarDatosSemanaActual();
   };
 
   const updateVentasDetalleRows = (ventasCerradas: number) => {
@@ -312,35 +272,104 @@ const VentasPage = () => {
     setVentasDetalle(updatedVentas);
   };
 
-  const handleSaveWeekData = () => {
-    console.log('Guardando datos de la semana:', {
-      semana: currentWeek.displayText,
-      leads: leadsData,
-      ventasDetalle
-    });
-
-    const existingWeekIndex = historialSemanas.findIndex(item => item.semana === currentWeek.displayText);
-    if (existingWeekIndex >= 0) {
-      const updatedHistorial = [...historialSemanas];
-      updatedHistorial[existingWeekIndex] = {
-        semana: currentWeek.displayText,
-        leads: {
-          ...leadsData
-        },
-        ventasDetalle: [...ventasDetalle]
-      };
-      setHistorialSemanas(updatedHistorial);
-    } else {
-      setHistorialSemanas([...historialSemanas, {
-        semana: currentWeek.displayText,
-        leads: {
-          ...leadsData
-        },
-        ventasDetalle: [...ventasDetalle]
-      }]);
+  const handleSaveWeekData = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Verificar si ya existe un registro para esta semana
+      const { data: existingSemana, error: searchError } = await supabase
+        .from('historial_semanal')
+        .select('id')
+        .eq('semana', currentWeek.displayText)
+        .maybeSingle();
+        
+      if (searchError) throw searchError;
+      
+      let historial_id;
+      
+      if (existingSemana?.id) {
+        // Actualizar registro existente
+        historial_id = existingSemana.id;
+        
+        const { error: updateError } = await supabase
+          .from('historial_semanal')
+          .update({
+            leads_pub_em: leadsData.leads_pub_em,
+            leads_pub_cl: leadsData.leads_pub_cl,
+            leads_frio_em: leadsData.leads_frio_em,
+            leads_frio_cl: leadsData.leads_frio_cl,
+            ventas_cerradas: leadsData.ventas_cerradas,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', historial_id);
+          
+        if (updateError) throw updateError;
+      } else {
+        // Crear nuevo registro
+        const { data: newSemana, error: insertError } = await supabase
+          .from('historial_semanal')
+          .insert({
+            semana: currentWeek.displayText,
+            fecha_inicio: currentWeek.startDate.toISOString(),
+            fecha_fin: currentWeek.endDate.toISOString(),
+            leads_pub_em: leadsData.leads_pub_em,
+            leads_pub_cl: leadsData.leads_pub_cl,
+            leads_frio_em: leadsData.leads_frio_em,
+            leads_frio_cl: leadsData.leads_frio_cl,
+            ventas_cerradas: leadsData.ventas_cerradas
+          })
+          .select('id')
+          .single();
+          
+        if (insertError) throw insertError;
+        historial_id = newSemana.id;
+      }
+      
+      // Eliminar ventas detalle anteriores para esta semana
+      const { error: deleteError } = await supabase
+        .from('ventas_detalle')
+        .delete()
+        .eq('historial_id', historial_id);
+        
+      if (deleteError) throw deleteError;
+      
+      // Guardar nuevas ventas detalle
+      if (ventasDetalle.length > 0) {
+        const ventasParaGuardar = ventasDetalle.map(venta => ({
+          historial_id,
+          cliente: venta.cliente,
+          ubicacion: venta.ubicacion,
+          tipo_servicio: venta.tipo_servicio,
+          costo_unitario: venta.costo_unitario,
+          total_vacs: venta.total_vacs
+        }));
+        
+        const { error: insertVentasError } = await supabase
+          .from('ventas_detalle')
+          .insert(ventasParaGuardar);
+          
+        if (insertVentasError) throw insertVentasError;
+      }
+      
+      // Recargar el historial
+      await loadHistorialSemanas();
+      
+      toast({
+        title: "Éxito",
+        description: "Información semanal guardada correctamente",
+        variant: "default"
+      });
+      
+    } catch (error) {
+      console.error("Error al guardar datos:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la información semanal",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    alert('Datos guardados correctamente');
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
