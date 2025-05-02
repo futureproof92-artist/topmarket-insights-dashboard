@@ -128,16 +128,16 @@ const HhCerradosPage = () => {
   const isLilia = user.role === 'lilia' || user.email?.includes('lilia');
   const isAdmin = user.role === 'admin' || user.email?.includes('admin');
   
-  // Formatear la fecha actual para mostrar en la interfaz
+  // Formatear la fecha actual para mostrar en la interfaz en el formato DD-MMM-YYYY
   const currentDate = new Date(2025, 4, 2);
-  const formattedDate = format(currentDate, "EEEE d 'de' MMMM yyyy", { locale: es });
+  const formattedDate = format(currentDate, "dd'-'MMM'-'yyyy", { locale: es });
 
   return (
     <AppShell user={user}>
       <div className="space-y-6">
         {/* Mostramos la fecha actual */}
         <div className="text-lg font-medium text-gray-800">
-          {formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1)}
+          {formattedDate}
         </div>
         
         {/* KPI Cards para ambos tipos de usuarios */}
