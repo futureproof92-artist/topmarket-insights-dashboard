@@ -20,9 +20,9 @@ const users: UserOption[] = [
   },
   {
     name: "Karla Casillas",
-    role: "nataly",
+    role: "karla",
     description: "Nuevo Personal Reclutamiento",
-    path: "/login/nataly"
+    path: "/login/karla"
   },
   {
     name: "Gaby Davila",

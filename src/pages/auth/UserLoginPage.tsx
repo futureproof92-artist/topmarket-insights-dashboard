@@ -12,7 +12,7 @@ const getUserInfo = (role: string) => {
       name: "Evelyn Matheus",
       description: "Ventas y Prospecciones"
     },
-    nataly: {
+    karla: {
       name: "Karla Casillas",
       description: "Nuevo Personal Reclutamiento"
     },
@@ -70,7 +70,7 @@ const UserLoginPage = () => {
     } else if (email.includes('administracion')) {
       navigate('/cobranza');
     } else if (email.includes('reclutamiento')) {
-      navigate('/cobranza');
+      navigate('/reclutamiento');
     } else {
       // Fallback based on current role
       switch(role) {
@@ -82,6 +82,9 @@ const UserLoginPage = () => {
           break;
         case 'lilia':
           navigate('/hh-cerrados');
+          break;
+        case 'karla':
+          navigate('/reclutamiento');
           break;
         case 'nataly':
         case 'cobranza':

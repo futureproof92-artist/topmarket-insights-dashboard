@@ -14,20 +14,57 @@ import NotFound from './pages/NotFound';
 import ReclutamientoPage from './pages/dashboard/ReclutamientoPage';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<{role: string, email: string} | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    setLoading(false);
   }, []);
+
+  // Function to determine where to redirect based on user role
+  const getRedirectPath = () => {
+    if (!user) return null;
+    
+    if (user.email.toLowerCase().includes('sergio.t@topmarket.com.mx') || user.role === 'admin') {
+      return '/admin';
+    }
+    
+    switch(user.role) {
+      case 'evelyn':
+        return '/ventas';
+      case 'davila':
+        return '/pxr-cerrados';
+      case 'lilia':
+        return '/hh-cerrados';
+      case 'karla':
+        return '/reclutamiento';
+      case 'nataly':
+      case 'cobranza':
+        return '/cobranza';
+      default:
+        return null;
+    }
+  };
+
+  if (loading) {
+    return <div>Cargando...</div>;
+  }
 
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/login" element={<UserLoginPage />} />
+        {/* Home route with conditional redirect for authenticated users */}
+        <Route path="/" element={
+          user && getRedirectPath() 
+            ? <Navigate to={getRedirectPath() as string} replace /> 
+            : <Index />
+        } />
+        
+        <Route path="/login/:role" element={<UserLoginPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/ventas" element={<VentasPage />} />
         <Route path="/historial" element={<HistorialPage />} />
