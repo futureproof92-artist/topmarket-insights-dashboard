@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserCheck, Users } from 'lucide-react';
@@ -18,6 +19,7 @@ export const Sidebar = ({
   onImpersonate
 }: SidebarProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Determine if user is admin
   const isAdmin = user?.role === 'admin' || user?.email?.includes('sergio.t@topmarket.com.mx');
@@ -118,7 +120,14 @@ export const Sidebar = ({
           <ul className="space-y-2">
             {navItems.map(item => <li key={item.path}>
                 <Link to={item.path}>
-                  <Button variant="ghost" className="w-full justify-start text-sm text-white hover:text-white" asChild>
+                  <Button 
+                    variant="ghost" 
+                    className={cn(
+                      "w-full justify-start text-sm text-white hover:text-white",
+                      location.pathname === item.path && "bg-sidebar-accent text-white"
+                    )} 
+                    asChild
+                  >
                     <span>{item.name}</span>
                   </Button>
                 </Link>
