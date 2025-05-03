@@ -44,10 +44,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    return await supabase.auth.signInWithPassword({
+    const response = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    // Transformamos la respuesta para que coincida con nuestra interfaz
+    return {
+      error: response.error,
+      data: response.data.session || null
+    };
   };
 
   const signOut = async () => {
