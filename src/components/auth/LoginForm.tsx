@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
+import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/context/AuthContext';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => void;
@@ -19,6 +19,7 @@ interface LoginFormValues {
 export const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signIn } = useAuth();
   const form = useForm<LoginFormValues>({
     defaultValues: {
       email: '',
@@ -28,40 +29,36 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
 
   const handleSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
-    console.log("Intentando acceder con:", values.email, values.password);
+    console.log("Intentando acceder con:", values.email);
 
-    // Credenciales de acceso seguras
-    const credentials = {
-      'dcomercial@topmarket.com.mx': 'jeifnAHE3HSB3',
-      'reclutamiento@topmarket.com.mx': 'TMkc73ndj2b',
-      'rys_cdmx@topmarket.com.mx': 'iHFUnd838nx',
-      'rlaboral@topmarket.com.com.mx': 'Th8F82Nbd',
-      'sergio.t@topmarket.com.mx': 'fk_2024_254_satg_280324',
-      'administracion@topmarket.com.mx': 'iE74nuy!jd'
-    };
-
-    // Verificar credenciales insensibles a mayúsculas/minúsculas para el email
-    const normalizedEmail = values.email.toLowerCase().trim();
-    const userCredential = Object.entries(credentials).find(([email]) => 
-      email.toLowerCase() === normalizedEmail
-    );
-
-    if (userCredential && userCredential[1] === values.password) {
-      toast({
-        title: "Acceso exitoso",
-        description: "Bienvenido/a a TopMarket",
-      });
-      onLogin(userCredential[0], values.password);
-    } else {
-      console.log("Credenciales incorrectas");
+    try {
+      const { error, data } = await signIn(values.email, values.password);
+      
+      if (error) {
+        console.log("Error de autenticación:", error.message);
+        toast({
+          title: "Error de acceso",
+          description: "Credenciales incorrectas",
+          variant: "destructive",
+        });
+      } else {
+        console.log("Autenticación exitosa:", data?.user?.email);
+        toast({
+          title: "Acceso exitoso",
+          description: "Bienvenido/a a TopMarket",
+        });
+        onLogin(values.email, values.password);
+      }
+    } catch (error) {
+      console.error("Error inesperado:", error);
       toast({
         title: "Error de acceso",
-        description: "Credenciales incorrectas",
+        description: "Ha ocurrido un error inesperado",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   return (

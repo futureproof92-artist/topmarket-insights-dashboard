@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { useAuth } from '@/context/AuthContext';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -11,16 +12,46 @@ interface AppShellProps {
   };
 }
 
-export const AppShell = ({ children, user }: AppShellProps) => {
+export const AppShell = ({ children }: AppShellProps) => {
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
   
-  // Load impersonated role from localStorage on mount
+  // Cargar usuario desde localStorage para mantener compatibilidad
   useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    } else if (authUser) {
+      // Si no hay usuario en localStorage pero sí en la sesión de Supabase
+      const email = authUser.email || '';
+      let role = 'user';
+      
+      // Determinar role basado en el email
+      if (email.includes('sergio.t@topmarket.com.mx')) {
+        role = 'admin';
+      } else if (email.includes('dcomercial')) {
+        role = 'evelyn';
+      } else if (email.includes('rys_cdmx')) {
+        role = 'davila';
+      } else if (email.includes('rlaboral')) {
+        role = 'lilia';
+      } else if (email.includes('administracion')) {
+        role = 'cobranza';
+      } else if (email.includes('reclutamiento')) {
+        role = 'karla';
+      }
+      
+      const userData = { email, role };
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+    }
+    
     const savedRole = localStorage.getItem('impersonatedRole');
     if (savedRole) {
       setImpersonatedRole(savedRole);
     }
-  }, []);
+  }, [authUser]);
 
   // Handle impersonation changes
   const handleImpersonate = (role: string | null) => {

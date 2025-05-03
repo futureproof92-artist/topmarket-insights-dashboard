@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserCheck, Users } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/context/AuthContext';
+
 interface SidebarProps {
   user?: {
     role: string;
@@ -13,6 +13,7 @@ interface SidebarProps {
   impersonatedRole?: string | null;
   onImpersonate?: (role: string | null) => void;
 }
+
 export const Sidebar = ({
   user,
   impersonatedRole,
@@ -20,12 +21,15 @@ export const Sidebar = ({
 }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
 
   // Determine if user is admin
   const isAdmin = user?.role === 'admin' || user?.email?.includes('sergio.t@topmarket.com.mx');
 
   // Use the impersonated role if available, otherwise use the actual role
   const activeRole = impersonatedRole || user?.role;
+  
+  // ... keep existing code (getNavItems function definition)
   const getNavItems = (role: string) => {
     switch (role) {
       case 'evelyn':
@@ -69,6 +73,7 @@ export const Sidebar = ({
         }];
     }
   };
+  
   const navItems = activeRole ? getNavItems(activeRole) : [];
 
   // User roles for impersonation
@@ -93,6 +98,7 @@ export const Sidebar = ({
     name: 'Nataly Zarate',
     description: 'Cobranza'
   }];
+  
   const handleImpersonate = (role: string | null) => {
     if (onImpersonate) {
       onImpersonate(role);
@@ -109,64 +115,66 @@ export const Sidebar = ({
       }
     }
   };
+  
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/');
+  };
+
   return <aside className="w-full md:w-64 bg-sidebar border-r border-border">
-      <div className="flex flex-col h-full">
-        <div className="p-4">
-          <h2 className="text-xl font-bold text-white">TopMarket</h2>
-          <p className="text-xs text-muted-foreground mt-1">Dashboard de Reportes y Gastos</p>
-        </div>
-
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            {navItems.map(item => <li key={item.path}>
-                <Link to={item.path}>
-                  <Button 
-                    variant="ghost" 
-                    className={cn(
-                      "w-full justify-start text-sm text-white hover:text-white",
-                      location.pathname === item.path && "bg-sidebar-accent text-white"
-                    )} 
-                    asChild
-                  >
-                    <span>{item.name}</span>
-                  </Button>
-                </Link>
-              </li>)}
-
-            {/* Admin user impersonation section */}
-            {isAdmin && <li className="pt-4">
-                <div className="flex items-center mb-2">
-                  <Users className="h-4 w-4 mr-2 text-white" />
-                  <span className="text-sm font-medium text-white">Ver como:</span>
-                </div>
-
-                {userRoles.map(userRole => <Button key={userRole.role} variant={impersonatedRole === userRole.role ? "default" : "ghost"} size="sm" className={cn("w-full justify-start text-xs mb-1", impersonatedRole === userRole.role ? "bg-primary text-primary-foreground" : "text-white hover:text-white")} onClick={() => handleImpersonate(userRole.role)}>
-                    <UserCheck className="h-3.5 w-3.5 mr-2" />
-                    {userRole.name} ({userRole.description})
-                  </Button>)}
-
-                {impersonatedRole && <Button variant="outline" size="sm" onClick={() => handleImpersonate(null)} className="w-full justify-start mt-2 text-xs border-white hover:bg-sidebar-accent text-slate-500">
-                    Volver a vista Admin
-                  </Button>}
-              </li>}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium text-white">{user?.email || 'Usuario no autenticado'}</p>
-            <p className="text-xs text-gray-400 capitalize">
-              {impersonatedRole ? `Viendo como: ${impersonatedRole}` : user?.role || 'Sin rol'}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => {
-          localStorage.removeItem('user');
-          localStorage.removeItem('impersonatedRole');
-          window.location.href = '/';
-        }} className="mt-2 w-full border-white hover:bg-sidebar-accent text-zinc-900">
-            Cerrar sesión
-          </Button>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="p-4">
+        <h2 className="text-xl font-bold text-white">TopMarket</h2>
+        <p className="text-xs text-muted-foreground mt-1">Dashboard de Reportes y Gastos</p>
       </div>
-    </aside>;
+
+      <nav className="flex-1 p-4">
+        <ul className="space-y-2">
+          {navItems.map(item => <li key={item.path}>
+            <Link to={item.path}>
+              <Button 
+                variant="ghost" 
+                className={cn(
+                  "w-full justify-start text-sm text-white hover:text-white",
+                  location.pathname === item.path && "bg-sidebar-accent text-white"
+                )} 
+                asChild
+              >
+                <span>{item.name}</span>
+              </Button>
+            </Link>
+          </li>)}
+
+          {/* Admin user impersonation section */}
+          {isAdmin && <li className="pt-4">
+            <div className="flex items-center mb-2">
+              <Users className="h-4 w-4 mr-2 text-white" />
+              <span className="text-sm font-medium text-white">Ver como:</span>
+            </div>
+
+            {userRoles.map(userRole => <Button key={userRole.role} variant={impersonatedRole === userRole.role ? "default" : "ghost"} size="sm" className={cn("w-full justify-start text-xs mb-1", impersonatedRole === userRole.role ? "bg-primary text-primary-foreground" : "text-white hover:text-white")} onClick={() => handleImpersonate(userRole.role)}>
+              <UserCheck className="h-3.5 w-3.5 mr-2" />
+              {userRole.name} ({userRole.description})
+            </Button>)}
+
+            {impersonatedRole && <Button variant="outline" size="sm" onClick={() => handleImpersonate(null)} className="w-full justify-start mt-2 text-xs border-white hover:bg-sidebar-accent text-slate-500">
+              Volver a vista Admin
+            </Button>}
+          </li>}
+        </ul>
+      </nav>
+
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex flex-col space-y-1">
+          <p className="text-sm font-medium text-white">{user?.email || 'Usuario no autenticado'}</p>
+          <p className="text-xs text-gray-400 capitalize">
+            {impersonatedRole ? `Viendo como: ${impersonatedRole}` : user?.role || 'Sin rol'}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="mt-2 w-full border-white hover:bg-sidebar-accent text-zinc-900">
+          Cerrar sesión
+        </Button>
+      </div>
+    </div>
+  </aside>;
 };
