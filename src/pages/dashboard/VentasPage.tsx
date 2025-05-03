@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -348,7 +347,11 @@ const VentasPage = () => {
           throw updateError;
         }
       } else {
-        // Crear nuevo registro
+        // Crear nuevo registro - Utilizamos el usuario actual para asegurar el acceso RLS
+        // Obtenemos el usuario actual para verificar su rol
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log("Usuario actual:", user);
+        
         const { data: newSemana, error: insertError } = await supabase
           .from('historial_semanal')
           .insert({
@@ -366,6 +369,7 @@ const VentasPage = () => {
           
         if (insertError) {
           console.error("Error al insertar nuevo historial:", insertError);
+          console.log("Detalles del error:", JSON.stringify(insertError));
           throw insertError;
         }
         
@@ -413,8 +417,7 @@ const VentasPage = () => {
       
       toast({
         title: "Éxito",
-        description: "Información semanal guardada correctamente",
-        variant: "default"
+        description: "Información semanal guardada correctamente"
       });
       
     } catch (error) {
@@ -436,6 +439,11 @@ const VentasPage = () => {
         }
         if (supabaseError.hint) {
           errorDesc += ` - Sugerencia: ${supabaseError.hint}`;
+        }
+        
+        // Verificar si es un error de política RLS
+        if (supabaseError.message && supabaseError.message.includes("row-level security policy")) {
+          errorDesc = "No tienes permisos para guardar esta información. Por favor, contacta al administrador.";
         }
       }
       

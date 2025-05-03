@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
@@ -9,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Check, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
 import { format, subDays, startOfWeek, endOfWeek, isWithinInterval, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -135,7 +134,11 @@ const HhCerradosPage = () => {
       const isAdmin = parsedUser.role === 'admin' || parsedUser.email?.includes('admin');
       
       if (!isLilia && !isAdmin) {
-        toast.error('No tienes autorización para acceder a esta página');
+        toast({
+          title: "Error",
+          description: "No tienes autorización para acceder a esta página",
+          variant: "destructive"
+        });
         window.location.href = '/';
       }
     } else {
@@ -168,7 +171,11 @@ const HhCerradosPage = () => {
     } catch (err: any) {
       console.error('Error fetching HH cerrados data:', err);
       setError(err.message || 'Error al cargar datos');
-      toast.error('Error al cargar los datos');
+      toast({
+        title: "Error",
+        description: "Error al cargar los datos",
+        variant: "destructive"
+      });
       // Usar datos generados en caso de error
       setWeeklyData(generateWeeklyData());
     } finally {
@@ -235,7 +242,11 @@ const HhCerradosPage = () => {
   const handleSave = async (id: string) => {
     const weekToUpdate = weeklyData.find(week => week.id === id);
     if (!weekToUpdate) {
-      toast.error('Error al guardar: No se encontró el registro');
+      toast({
+        title: "Error",
+        description: "Error al guardar: No se encontró el registro",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -303,11 +314,18 @@ const HhCerradosPage = () => {
       }
       
       setEditingRowId(null);
-      toast.success('Datos guardados correctamente');
+      toast({
+        title: "Éxito",
+        description: "Datos guardados correctamente"
+      });
       
     } catch (err: any) {
       console.error('Error saving data:', err);
-      toast.error(`Error al guardar: ${err.message || 'Error desconocido'}`);
+      toast({
+        title: "Error", 
+        description: `Error al guardar: ${err.message || 'Error desconocido'}`,
+        variant: "destructive"
+      });
     }
   };
 
