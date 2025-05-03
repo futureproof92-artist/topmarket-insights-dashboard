@@ -71,6 +71,7 @@ const VentasPage = () => {
     ventasDetalle: VentaDetalle[];
   }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Efecto para cargar el usuario y configurar la interfaz inicial
@@ -96,6 +97,7 @@ const VentasPage = () => {
   const loadHistorialSemanas = async () => {
     try {
       setIsLoading(true);
+      setErrorMessage(null);
       
       // Obtener todas las entradas del historial semanal
       const { data: historialData, error: historialError } = await supabase
@@ -103,7 +105,10 @@ const VentasPage = () => {
         .select('*')
         .order('fecha_inicio', { ascending: false });
         
-      if (historialError) throw historialError;
+      if (historialError) {
+        console.error("Error al cargar historial:", historialError);
+        throw historialError;
+      }
       
       if (!historialData || historialData.length === 0) {
         setHistorialSemanas([]);
@@ -119,7 +124,10 @@ const VentasPage = () => {
             .select('*')
             .eq('historial_id', semana.id);
             
-          if (ventasError) throw ventasError;
+          if (ventasError) {
+            console.error("Error al cargar ventas detalle:", ventasError);
+            throw ventasError;
+          }
           
           // Convertir los tipos de servicio de string a los tipos específicos
           const ventasFormateadas: VentaDetalle[] = ventasData ? ventasData.map(venta => ({
@@ -148,6 +156,7 @@ const VentasPage = () => {
       setHistorialSemanas(historialCompleto);
     } catch (error) {
       console.error("Error al cargar el historial:", error);
+      setErrorMessage(`Error al cargar el historial: ${error instanceof Error ? error.message : 'Error desconocido'}`);
       toast({
         title: "Error",
         description: "No se pudo cargar el historial de semanas",
@@ -161,6 +170,7 @@ const VentasPage = () => {
   // Función para cargar los datos de la semana actual
   const cargarDatosSemanaActual = async () => {
     try {
+      setErrorMessage(null);
       // Verificar si ya existen datos para la semana actual
       const { data: semanaExistente, error: errorBusqueda } = await supabase
         .from('historial_semanal')
@@ -169,6 +179,7 @@ const VentasPage = () => {
         .maybeSingle();
         
       if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
+        console.error("Error al buscar semana existente:", errorBusqueda);
         throw errorBusqueda;
       }
       
@@ -188,7 +199,10 @@ const VentasPage = () => {
           .select('*')
           .eq('historial_id', semanaExistente.id);
           
-        if (ventasError) throw ventasError;
+        if (ventasError) {
+          console.error("Error al cargar ventas detalle:", ventasError);
+          throw ventasError;
+        }
         
         if (ventasData && ventasData.length > 0) {
           // Convertir los tipos de servicio de string a los tipos específicos
@@ -223,6 +237,7 @@ const VentasPage = () => {
       }
     } catch (error) {
       console.error("Error al cargar datos de la semana actual:", error);
+      setErrorMessage(`Error al cargar datos: ${error instanceof Error ? error.message : 'Error desconocido'}`);
       toast({
         title: "Error",
         description: "No se pudieron cargar los datos de la semana actual",
@@ -296,6 +311,7 @@ const VentasPage = () => {
   const handleSaveWeekData = async () => {
     try {
       setIsLoading(true);
+      setErrorMessage(null);
       
       // Verificar si ya existe un registro para esta semana
       const { data: existingSemana, error: searchError } = await supabase
@@ -304,7 +320,10 @@ const VentasPage = () => {
         .eq('semana', currentWeek.displayText)
         .maybeSingle();
         
-      if (searchError) throw searchError;
+      if (searchError) {
+        console.error("Error al buscar semana existente:", searchError);
+        throw searchError;
+      }
       
       let historial_id;
       
@@ -324,7 +343,10 @@ const VentasPage = () => {
           })
           .eq('id', historial_id);
           
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error("Error al actualizar historial:", updateError);
+          throw updateError;
+        }
       } else {
         // Crear nuevo registro
         const { data: newSemana, error: insertError } = await supabase
@@ -342,20 +364,31 @@ const VentasPage = () => {
           .select('id')
           .single();
           
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error("Error al insertar nuevo historial:", insertError);
+          throw insertError;
+        }
+        
+        if (!newSemana) {
+          throw new Error("No se recibió ID después de insertar");
+        }
+        
         historial_id = newSemana.id;
       }
       
       // Eliminar ventas detalle anteriores para esta semana
-      const { error: deleteError } = await supabase
-        .from('ventas_detalle')
-        .delete()
-        .eq('historial_id', historial_id);
-        
-      if (deleteError) throw deleteError;
-      
-      // Guardar nuevas ventas detalle
       if (ventasDetalle.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('ventas_detalle')
+          .delete()
+          .eq('historial_id', historial_id);
+          
+        if (deleteError) {
+          console.error("Error al eliminar ventas detalle:", deleteError);
+          throw deleteError;
+        }
+        
+        // Guardar nuevas ventas detalle
         const ventasParaGuardar = ventasDetalle.map(venta => ({
           historial_id,
           cliente: venta.cliente,
@@ -369,7 +402,10 @@ const VentasPage = () => {
           .from('ventas_detalle')
           .insert(ventasParaGuardar);
           
-        if (insertVentasError) throw insertVentasError;
+        if (insertVentasError) {
+          console.error("Error al insertar ventas detalle:", insertVentasError);
+          throw insertVentasError;
+        }
       }
       
       // Recargar el historial
@@ -383,9 +419,31 @@ const VentasPage = () => {
       
     } catch (error) {
       console.error("Error al guardar datos:", error);
+      
+      // Extraer mensaje de error detallado para mostrar al usuario
+      let errorDesc = "No se pudo guardar la información semanal";
+      
+      if (error instanceof Error) {
+        errorDesc += `: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null) {
+        // Si es un error de Supabase probablemente
+        const supabaseError = error as any;
+        if (supabaseError.message) {
+          errorDesc += `: ${supabaseError.message}`;
+        }
+        if (supabaseError.details) {
+          errorDesc += ` (${supabaseError.details})`;
+        }
+        if (supabaseError.hint) {
+          errorDesc += ` - Sugerencia: ${supabaseError.hint}`;
+        }
+      }
+      
+      setErrorMessage(errorDesc);
+      
       toast({
         title: "Error",
-        description: "No se pudo guardar la información semanal",
+        description: errorDesc,
         variant: "destructive"
       });
     } finally {
@@ -451,8 +509,28 @@ const VentasPage = () => {
                 
                 {leadsData.ventas_cerradas > 0 && <VentasDetalleForm ventasDetalle={ventasDetalle} onVentaDetalleChange={handleVentaDetalleChange} />}
                 
-                <Button className="w-full mt-4 bg-topmarket hover:bg-topmarket/90" onClick={handleSaveWeekData}>
-                  Guardar Información Semanal
+                {errorMessage && (
+                  <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded">
+                    <div className="flex">
+                      <div className="py-1">
+                        <svg className="h-6 w-6 text-red-500 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-bold">Error</p>
+                        <p className="text-sm">{errorMessage}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <Button 
+                  className="w-full mt-4 bg-topmarket hover:bg-topmarket/90" 
+                  onClick={handleSaveWeekData}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Guardando...' : 'Guardar Información Semanal'}
                 </Button>
               </TabsContent>
               
