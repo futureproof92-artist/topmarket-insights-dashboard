@@ -99,6 +99,7 @@ const generateChartData = (weeklyData: WeeklyHhData[]) => {
 };
 
 const HhCerradosPage = () => {
+  const { toast } = useToast(); // Extract toast function from the hook
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [weeklyData, setWeeklyData] = useState<WeeklyHhData[]>([]);
   const [filteredData, setFilteredData] = useState<WeeklyHhData[]>([]);
@@ -145,7 +146,7 @@ const HhCerradosPage = () => {
       // Redirigir al login si no hay usuario
       window.location.href = '/';
     }
-  }, []);
+  }, [toast]);
   
   // Cargar datos reales desde Supabase
   const fetchHhCerradosData = async () => {
