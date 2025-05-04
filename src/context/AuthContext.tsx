@@ -58,31 +58,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       },
       // Evelyn (Ventas)
       'dcomercial@topmarket.com.mx': {
-        password: 'topmarket2024',
+        password: 'jeifnAHE3HSB3',
         role: 'evelyn',
         id: 'evelyn-user-id',
       },
       // Gaby Davila (PXR Cerrados)
       'rys_cdmx@topmarket.com.mx': {
-        password: 'topmarket2024',
+        password: 'iHFUnd838nx',
         role: 'davila',
         id: 'davila-user-id',
       },
       // Lilia Morales (HH Cerrados)
       'rlaboral@topmarket.com.mx': {
-        password: 'topmarket2024',
+        password: 'Th8F82Nbd',
         role: 'lilia',
         id: 'lilia-user-id',
       },
       // Karla Casillas (Reclutamiento)
       'reclutamiento@topmarket.com.mx': {
-        password: 'topmarket2024',
+        password: 'TMkc73ndj2b',
         role: 'karla',
         id: 'karla-user-id',
       },
       // Nataly Zarate (Cobranza)
       'administracion@topmarket.com.mx': {
-        password: 'topmarket2024',
+        password: 'iE74nuy!jd',
         role: 'cobranza',
         id: 'cobranza-user-id',
       }
