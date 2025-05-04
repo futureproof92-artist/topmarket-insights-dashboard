@@ -25,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up the auth listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession ? "Session present" : "No session");
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
@@ -33,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("Checking existing session:", currentSession ? "Session found" : "No session found");
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
@@ -44,23 +46,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const response = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    console.log("Intentando iniciar sesión con:", email);
     
-    // Transformamos la respuesta para que coincida con nuestra interfaz
-    return {
-      error: response.error,
-      data: response.data.session || null
-    };
+    try {
+      const response = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      console.log("Respuesta de Supabase:", 
+        response.error ? `Error: ${response.error.message}` : "Sin error",
+        response.data ? "Datos disponibles" : "Sin datos"
+      );
+      
+      // Transformamos la respuesta para que coincida con nuestra interfaz
+      return {
+        error: response.error,
+        data: response.data.session || null
+      };
+    } catch (e) {
+      console.error("Error inesperado en signIn:", e);
+      return {
+        error: {
+          message: "Error inesperado al iniciar sesión",
+          name: "UnexpectedError",
+        },
+        data: null
+      };
+    }
   };
 
   const signOut = async () => {
+    console.log("Cerrando sesión");
     await supabase.auth.signOut();
     // También limpiamos localStorage para compatibilidad con el sistema anterior
     localStorage.removeItem('user');
     localStorage.removeItem('impersonatedRole');
+    console.log("Sesión cerrada y almacenamiento local limpiado");
   };
 
   return (

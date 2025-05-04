@@ -46,12 +46,15 @@ const UserLoginPage = () => {
   useEffect(() => {
     // Si ya hay un usuario autenticado, redireccionar según su rol
     if (user) {
+      console.log("Usuario autenticado detectado:", user.email);
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const userData = JSON.parse(storedUser);
+        console.log("Datos de usuario en localStorage:", userData);
         
         // Redirección específica para el administrador
         if (userData.email.toLowerCase().includes('sergio.t@topmarket.com.mx') || userData.role === 'admin') {
+          console.log("Redirigiendo a administrador a /admin");
           navigate('/admin');
           return;
         }
@@ -73,6 +76,7 @@ const UserLoginPage = () => {
   }, [user, navigate]);
 
   if (!userInfo) {
+    console.log("Rol no válido, redirigiendo a la página principal");
     return <Navigate to="/" replace />;
   }
 
@@ -86,6 +90,7 @@ const UserLoginPage = () => {
     
     // Redirección específica para el administrador
     if (email.toLowerCase().includes('sergio.t@topmarket.com.mx') || role === 'admin') {
+      console.log("Redirigiendo a administrador a /admin");
       navigate('/admin');
       return;
     }
