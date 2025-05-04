@@ -48,34 +48,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     console.log("Intentando iniciar sesión con:", email);
     
-    // Special case for admin user (hardcoded fallback for development/testing)
-    if (email.toLowerCase() === 'sergio.t@topmarket.com.mx' && 
-        password === 'fk_2024_254_satg_280324') {
-      console.log("Admin login detected, using fallback authentication");
-      
-      // Create a mock session for the admin
-      const mockUser = {
+    // Tabla de usuarios y contraseñas de respaldo para desarrollo/testing
+    const fallbackUsers = {
+      // Admin
+      'sergio.t@topmarket.com.mx': {
+        password: 'fk_2024_254_satg_280324',
+        role: 'admin',
         id: 'admin-user-id',
-        email: 'sergio.t@topmarket.com.mx',
-        role: 'admin'
+      },
+      // Evelyn (Ventas)
+      'dcomercial@topmarket.com.mx': {
+        password: 'topmarket2024',
+        role: 'evelyn',
+        id: 'evelyn-user-id',
+      },
+      // Gaby Davila (PXR Cerrados)
+      'rys_cdmx@topmarket.com.mx': {
+        password: 'topmarket2024',
+        role: 'davila',
+        id: 'davila-user-id',
+      },
+      // Lilia Morales (HH Cerrados)
+      'rlaboral@topmarket.com.mx': {
+        password: 'topmarket2024',
+        role: 'lilia',
+        id: 'lilia-user-id',
+      },
+      // Karla Casillas (Reclutamiento)
+      'reclutamiento@topmarket.com.mx': {
+        password: 'topmarket2024',
+        role: 'karla',
+        id: 'karla-user-id',
+      },
+      // Nataly Zarate (Cobranza)
+      'administracion@topmarket.com.mx': {
+        password: 'topmarket2024',
+        role: 'cobranza',
+        id: 'cobranza-user-id',
+      }
+    };
+    
+    // Verificar si es un usuario de fallback
+    const normalizedEmail = email.toLowerCase();
+    const fallbackUser = fallbackUsers[normalizedEmail as keyof typeof fallbackUsers];
+    
+    if (fallbackUser && fallbackUser.password === password) {
+      console.log(`Autenticación fallback exitosa para: ${normalizedEmail} con rol: ${fallbackUser.role}`);
+      
+      // Crear un usuario mock para el flujo de autenticación local
+      const mockUser = {
+        id: fallbackUser.id,
+        email: normalizedEmail,
+        role: fallbackUser.role,
       };
       
-      // Store in localStorage for compatibility with the existing system
+      // Almacenar en localStorage para compatibilidad con el sistema existente
       localStorage.setItem('user', JSON.stringify(mockUser));
       
-      // Return success without hitting Supabase
+      // Devolver éxito sin consultar a Supabase
       return {
         error: null,
         data: {
           user: mockUser,
-          access_token: 'mock-access-token',
-          refresh_token: 'mock-refresh-token',
+          access_token: `mock-access-token-${fallbackUser.role}`,
+          refresh_token: `mock-refresh-token-${fallbackUser.role}`,
           expires_in: 3600,
         } as unknown as Session
       };
     }
     
-    // Regular authentication flow with Supabase
+    // Flujo de autenticación regular con Supabase
+    console.log("Usuario no encontrado en fallback, intentando con Supabase");
     try {
       const response = await supabase.auth.signInWithPassword({
         email,

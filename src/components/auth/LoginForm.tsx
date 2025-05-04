@@ -32,16 +32,16 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
     console.log("Intentando acceder con:", values.email);
 
     try {
-      console.log("Iniciando proceso de autenticación con Supabase");
+      console.log("Iniciando proceso de autenticación");
       const { error, data } = await signIn(values.email, values.password);
       
       console.log("Respuesta de autenticación:", { error: error ? "Error presente" : "Sin error", data: data ? "Datos presentes" : "Sin datos" });
       
       if (error) {
-        console.log("Error de autenticación detallado:", error.message, error);
+        console.log("Error de autenticación detallado:", error.message);
         toast({
           title: "Error de acceso",
-          description: `Credenciales incorrectas: ${error.message}`,
+          description: "Credenciales incorrectas. Por favor verifica tu correo y contraseña.",
           variant: "destructive",
         });
       } else if (!data) {
