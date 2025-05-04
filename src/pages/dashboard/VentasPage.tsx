@@ -324,11 +324,22 @@ const VentasPage = () => {
         throw searchError;
       }
       
+      // Obtener el usuario actual para registrar quién realiza los cambios
+      const storedUser = localStorage.getItem('user');
+      const currentUser = storedUser ? JSON.parse(storedUser) : null;
+      console.log("Usuario actual realizando guardado:", currentUser);
+      
+      // Asegurarnos de que la sesión de Supabase esté activa
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log("Sesión al guardar datos:", sessionData?.session ? "Activa" : "No hay sesión");
+      
       let historial_id;
       
       if (existingSemana?.id) {
         // Actualizar registro existente
         historial_id = existingSemana.id;
+        
+        console.log("Actualizando registro existente con ID:", historial_id);
         
         const { error: updateError } = await supabase
           .from('historial_semanal')
@@ -344,26 +355,31 @@ const VentasPage = () => {
           
         if (updateError) {
           console.error("Error al actualizar historial:", updateError);
+          console.log("Detalles del error:", JSON.stringify(updateError));
           throw updateError;
+        } else {
+          console.log("Registro actualizado exitosamente");
         }
       } else {
-        // Crear nuevo registro - Utilizamos el usuario actual para asegurar el acceso RLS
-        // Obtenemos el usuario actual para verificar su rol
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log("Usuario actual:", user);
+        // Crear nuevo registro
+        console.log("Creando nuevo registro de historial semanal");
+        
+        const insertData = {
+          semana: currentWeek.displayText,
+          fecha_inicio: currentWeek.startDate.toISOString(),
+          fecha_fin: currentWeek.endDate.toISOString(),
+          leads_pub_em: leadsData.leads_pub_em,
+          leads_pub_cl: leadsData.leads_pub_cl,
+          leads_frio_em: leadsData.leads_frio_em,
+          leads_frio_cl: leadsData.leads_frio_cl,
+          ventas_cerradas: leadsData.ventas_cerradas
+        };
+        
+        console.log("Datos a insertar:", insertData);
         
         const { data: newSemana, error: insertError } = await supabase
           .from('historial_semanal')
-          .insert({
-            semana: currentWeek.displayText,
-            fecha_inicio: currentWeek.startDate.toISOString(),
-            fecha_fin: currentWeek.endDate.toISOString(),
-            leads_pub_em: leadsData.leads_pub_em,
-            leads_pub_cl: leadsData.leads_pub_cl,
-            leads_frio_em: leadsData.leads_frio_em,
-            leads_frio_cl: leadsData.leads_frio_cl,
-            ventas_cerradas: leadsData.ventas_cerradas
-          })
+          .insert(insertData)
           .select('id')
           .single();
           
@@ -374,14 +390,18 @@ const VentasPage = () => {
         }
         
         if (!newSemana) {
+          console.error("No se recibió ID después de insertar");
           throw new Error("No se recibió ID después de insertar");
         }
         
+        console.log("Nuevo registro creado con ID:", newSemana.id);
         historial_id = newSemana.id;
       }
       
       // Eliminar ventas detalle anteriores para esta semana
       if (ventasDetalle.length > 0) {
+        console.log("Eliminando ventas detalle existentes para historial_id:", historial_id);
+        
         const { error: deleteError } = await supabase
           .from('ventas_detalle')
           .delete()
@@ -389,7 +409,10 @@ const VentasPage = () => {
           
         if (deleteError) {
           console.error("Error al eliminar ventas detalle:", deleteError);
+          console.log("Detalles del error:", JSON.stringify(deleteError));
           throw deleteError;
+        } else {
+          console.log("Ventas detalle anteriores eliminadas exitosamente");
         }
         
         // Guardar nuevas ventas detalle
@@ -402,13 +425,18 @@ const VentasPage = () => {
           total_vacs: venta.total_vacs
         }));
         
+        console.log("Guardando ventas detalle:", ventasParaGuardar);
+        
         const { error: insertVentasError } = await supabase
           .from('ventas_detalle')
           .insert(ventasParaGuardar);
           
         if (insertVentasError) {
           console.error("Error al insertar ventas detalle:", insertVentasError);
+          console.log("Detalles del error:", JSON.stringify(insertVentasError));
           throw insertVentasError;
+        } else {
+          console.log("Ventas detalle guardadas exitosamente");
         }
       }
       

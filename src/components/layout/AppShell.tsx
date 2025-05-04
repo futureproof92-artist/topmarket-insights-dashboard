@@ -22,6 +22,7 @@ export const AppShell = ({ children }: AppShellProps) => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
+      console.log("Usuario cargado desde localStorage:", JSON.parse(savedUser));
     } else if (authUser) {
       // Si no hay usuario en localStorage pero sí en la sesión de Supabase
       const email = authUser.email || '';
@@ -45,6 +46,7 @@ export const AppShell = ({ children }: AppShellProps) => {
       const userData = { email, role };
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
+      console.log("Usuario generado desde authUser:", userData);
     }
     
     const savedRole = localStorage.getItem('impersonatedRole');

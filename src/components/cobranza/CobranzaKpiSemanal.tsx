@@ -119,8 +119,19 @@ export const CobranzaKpiSemanal = () => {
   // Guardar datos en Supabase
   const handleSaveData = async () => {
     try {
+      // Verificar que haya una sesión activa
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log("Sesión al guardar datos de cobranza:", sessionData?.session ? "Activa" : "No hay sesión");
+      
+      // Obtener el usuario actual para registrar quién realiza los cambios
+      const storedUser = localStorage.getItem('user');
+      const currentUser = storedUser ? JSON.parse(storedUser) : null;
+      console.log("Usuario actual realizando guardado de cobranza:", currentUser);
+      
       if (weeklyData) {
         // Actualizar registro existente
+        console.log("Actualizando registro de cobranza con ID:", weeklyData.id);
+        
         const { error } = await supabase
           .from('cobranza')
           .update({
@@ -130,22 +141,38 @@ export const CobranzaKpiSemanal = () => {
           })
           .eq('id', weeklyData.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error al actualizar cobranza:", error);
+          console.log("Detalles del error:", JSON.stringify(error));
+          throw error;
+        } else {
+          console.log("Registro de cobranza actualizado exitosamente");
+        }
       } else {
         // Crear nuevo registro
+        console.log("Creando nuevo registro de cobranza");
+        
+        const newRecord = {
+          semana: weekKey,
+          semana_inicio: formattedStartDate,
+          semana_fin: formattedEndDate,
+          cobrado_total: formData.cobrado_total,
+          pagos_no_confirmados: formData.pagos_no_confirmados
+        };
+        
+        console.log("Datos a insertar:", newRecord);
+        
         const { error } = await supabase
           .from('cobranza')
-          .insert([
-            {
-              semana: weekKey,
-              semana_inicio: formattedStartDate,
-              semana_fin: formattedEndDate,
-              cobrado_total: formData.cobrado_total,
-              pagos_no_confirmados: formData.pagos_no_confirmados
-            }
-          ]);
+          .insert([newRecord]);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error al crear registro de cobranza:", error);
+          console.log("Detalles del error:", JSON.stringify(error));
+          throw error;
+        } else {
+          console.log("Nuevo registro de cobranza creado exitosamente");
+        }
       }
 
       // Actualizar estado local con los nuevos datos
