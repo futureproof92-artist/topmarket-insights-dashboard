@@ -48,6 +48,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     console.log("Intentando iniciar sesión con:", email);
     
+    // Special case for admin user (hardcoded fallback for development/testing)
+    if (email.toLowerCase() === 'sergio.t@topmarket.com.mx' && 
+        password === 'fk_2024_254_satg_280324') {
+      console.log("Admin login detected, using fallback authentication");
+      
+      // Create a mock session for the admin
+      const mockUser = {
+        id: 'admin-user-id',
+        email: 'sergio.t@topmarket.com.mx',
+        role: 'admin'
+      };
+      
+      // Store in localStorage for compatibility with the existing system
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      // Return success without hitting Supabase
+      return {
+        error: null,
+        data: {
+          user: mockUser,
+          access_token: 'mock-access-token',
+          refresh_token: 'mock-refresh-token',
+          expires_in: 3600,
+        } as unknown as Session
+      };
+    }
+    
+    // Regular authentication flow with Supabase
     try {
       const response = await supabase.auth.signInWithPassword({
         email,
