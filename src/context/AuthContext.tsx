@@ -262,14 +262,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     console.log("[AUTH_DEBUG] Cerrando sesión - Eliminando token JWT");
-    await supabase.auth.signOut();
-    // También limpiamos localStorage para compatibilidad con el sistema anterior
-    localStorage.removeItem('user');
-    localStorage.removeItem('impersonatedRole');
-    setUserRole(null);
-    setUser(null);
-    setSession(null);
-    console.log("[AUTH_DEBUG] Sesión cerrada y almacenamiento local limpiado");
+    try {
+      // Limpiar localStorage primero por si hay problemas con Supabase
+      localStorage.removeItem('user');
+      localStorage.removeItem('impersonatedRole');
+      
+      // Intentar cerrar sesión con Supabase
+      await supabase.auth.signOut();
+      
+      // Actualizar el estado después de cerrar sesión
+      setUserRole(null);
+      setUser(null);
+      setSession(null);
+      
+      console.log("[AUTH_DEBUG] Sesión cerrada y almacenamiento local limpiado");
+      
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente.",
+        variant: "default"
+      });
+      
+      return Promise.resolve();
+    } catch (error) {
+      console.error("[AUTH_DEBUG] Error al cerrar sesión:", error);
+      
+      // En caso de error, asegurar que se limpia el estado local
+      setUserRole(null);
+      setUser(null);
+      setSession(null);
+      
+      toast({
+        title: "Error al cerrar sesión",
+        description: "Hubo un problema, pero la sesión se ha cerrado localmente.",
+        variant: "destructive"
+      });
+      
+      // Resolver la promesa incluso si hay error para no bloquear la redirección
+      return Promise.resolve();
+    }
   };
 
   return (

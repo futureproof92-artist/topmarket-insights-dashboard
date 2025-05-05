@@ -119,14 +119,33 @@ export const Sidebar = ({
   
   const handleLogout = async () => {
     try {
+      console.log("[AUTH_DEBUG] Iniciando proceso de cierre de sesión desde Sidebar");
+      
+      // Limpiar cualquier dato de impersonación
+      if (onImpersonate && impersonatedRole) {
+        onImpersonate(null);
+      }
+      
+      // Llamar a signOut y esperar a que termine
       await signOut();
-      // Asegurar redirección forzada a la página de inicio
+      
+      // Forzar limpieza adicional de localStorage
+      localStorage.removeItem('user');
+      localStorage.removeItem('impersonatedRole');
+      
+      // Redirección forzada con replace:true para prevenir navegación hacia atrás
       console.log("[AUTH_DEBUG] Redirigiendo a página principal después de cerrar sesión");
-      navigate('/', { replace: true });
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 0);
     } catch (error) {
       console.error("[AUTH_DEBUG] Error al cerrar sesión:", error);
+      
       // Intentar redirección incluso si hay un error
-      navigate('/', { replace: true });
+      console.log("[AUTH_DEBUG] Intentando redirección forzada por error");
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 0);
     }
   };
 
