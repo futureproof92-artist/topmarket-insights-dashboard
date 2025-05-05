@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
@@ -121,7 +120,19 @@ export const CobranzaKpiSemanal = () => {
     try {
       // Verificar que haya una sesión activa
       const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Sesión al guardar datos de cobranza:", sessionData?.session ? "Activa" : "No hay sesión");
+      console.log("Sesión al guardar datos de cobranza:", 
+        sessionData?.session ? "Activa con token: " + sessionData.session.access_token.substring(0, 10) + "..." : "No hay sesión"
+      );
+      
+      if (!sessionData?.session) {
+        console.error("No hay sesión activa de Supabase, intentando refresh...");
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        console.log("Resultado del refresh:", refreshData.session ? "Sesión refrescada" : "No se pudo refrescar");
+        
+        if (!refreshData.session) {
+          throw new Error("No hay sesión activa de Supabase y no se pudo refrescar. Por favor, inicie sesión nuevamente.");
+        }
+      }
       
       // Obtener el usuario actual para registrar quién realiza los cambios
       const storedUser = localStorage.getItem('user');
@@ -192,9 +203,34 @@ export const CobranzaKpiSemanal = () => {
       });
     } catch (error) {
       console.error('Error saving cobranza data:', error);
+      
+      // Mostrar mensaje de error más detallado
+      let errorMessage = "No se pudieron guardar los datos de cobranza";
+      
+      if (error instanceof Error) {
+        errorMessage += `: ${error.message}`;
+      } else if (typeof error === 'object' && error !== null) {
+        // Si es un error de Supabase probablemente
+        const supabaseError = error as any;
+        if (supabaseError.message) {
+          errorMessage += `: ${supabaseError.message}`;
+        }
+        if (supabaseError.details) {
+          errorMessage += ` (${supabaseError.details})`;
+        }
+        if (supabaseError.hint) {
+          errorMessage += ` - Sugerencia: ${supabaseError.hint}`;
+        }
+        
+        // Verificar si es un error de política RLS
+        if (supabaseError.message && supabaseError.message.includes("row-level security policy")) {
+          errorMessage = "No tienes permisos para guardar esta información. Por favor, contacta al administrador.";
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "No se pudieron guardar los datos de cobranza",
+        description: errorMessage,
         variant: "destructive"
       });
     }

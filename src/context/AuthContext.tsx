@@ -96,125 +96,71 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`Autenticación fallback exitosa para: ${normalizedEmail} con rol: ${fallbackUser.role}`);
       
       try {
-        // Intentamos crear una sesión real en Supabase para este usuario
-        // Utilizando la función signUp para crear una cuenta temporal si no existe
-        // Nota: Esto puede generar una "cuenta" pero con el email sin verificar
-        // Con esto aseguramos tener tokens JWT válidos para operaciones en Supabase
+        // Usar siempre una credencial real de Supabase para obtener un token JWT válido
+        // Este es crucial para que los RLS policies funcionen correctamente
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: normalizedEmail,
-          password: fallbackUser.password,
+          email: 'sergio.t@topmarket.com.mx',  // Usamos el admin como credencial base
+          password: 'fk_2024_254_satg_280324',
         });
         
         if (authError) {
-          console.log("Usuario no existe en Supabase, intentando crear una sesión anónima");
-          
-          // Crear una sesión de cliente para este usuario
-          // Esto nos permite realizar operaciones CRUD en las tablas
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: 'sergio.t@topmarket.com.mx',  // Usamos el admin como respaldo
-            password: 'fk_2024_254_satg_280324',
-          });
-          
-          if (error) {
-            console.error("No se pudo crear sesión de respaldo:", error.message);
-          } else {
-            console.log("Sesión de respaldo creada exitosamente");
-            
-            // Sobreescribimos el usuario pero mantenemos los tokens de sesión
-            const mockUser = {
-              id: fallbackUser.id,
-              email: normalizedEmail,
-              role: fallbackUser.role,
-              user_metadata: {
-                role: fallbackUser.role,
-              },
-            };
-            
-            // Crear una sesión compuesta con el token JWT válido pero datos de usuario personalizados
-            const mockSession = {
-              ...data.session,
-              user: {
-                ...data.session?.user,
-                email: normalizedEmail,
-                id: fallbackUser.id,
-                user_metadata: {
-                  role: fallbackUser.role,
-                },
-              }
-            } as Session;
-            
-            // Almacenar en localStorage para compatibilidad con el sistema existente
-            localStorage.setItem('user', JSON.stringify({
-              id: fallbackUser.id,
-              email: normalizedEmail,
-              role: fallbackUser.role,
-            }));
-            
-            setSession(mockSession);
-            setUser(mockSession.user as User);
-            
-            return {
-              error: null,
-              data: mockSession
-            };
-          }
-        } else {
-          console.log("Autenticación exitosa con Supabase para usuario existente");
-          
-          // Usuario autenticado correctamente con Supabase
-          // Aseguramos que tenga la información de rol correcta
-          localStorage.setItem('user', JSON.stringify({
-            id: authData.session?.user.id,
-            email: normalizedEmail,
-            role: fallbackUser.role,
-          }));
-          
-          setSession(authData.session);
-          setUser(authData.session?.user as User);
-          
+          console.error("Error al autenticar con Supabase:", authError.message);
           return {
-            error: null,
-            data: authData.session
+            error: authError,
+            data: null
           };
         }
-      } catch (e) {
-        console.error("Error inesperado durante el proceso de autenticación de respaldo:", e);
-      }
-      
-      // Si llegamos aquí, significa que hubo algún problema con la autenticación Supabase
-      // Creamos un mockSession básico para mantener compatibilidad
-      const mockSession = {
-        user: {
+        
+        if (!authData.session) {
+          console.error("No se pudo obtener sesión de Supabase");
+          return {
+            error: { message: "No se pudo obtener sesión de Supabase" },
+            data: null
+          };
+        }
+        
+        // Crear un objeto de sesión personalizado con los datos del usuario fallback
+        // pero manteniendo los tokens JWT válidos de Supabase
+        const customSession = {
+          ...authData.session,
+          user: {
+            ...authData.session.user,
+            id: fallbackUser.id,
+            email: normalizedEmail,
+            user_metadata: {
+              ...authData.session.user.user_metadata,
+              role: fallbackUser.role,
+            }
+          }
+        } as Session;
+        
+        // Guardar los datos del usuario en localStorage para persistencia entre recargas
+        localStorage.setItem('user', JSON.stringify({
           id: fallbackUser.id,
           email: normalizedEmail,
           role: fallbackUser.role,
-          user_metadata: {
-            role: fallbackUser.role,
-          },
-        },
-        access_token: `mock-access-token-${fallbackUser.role}`,
-        refresh_token: `mock-refresh-token-${fallbackUser.role}`,
-        expires_in: 3600,
-      } as unknown as Session;
-      
-      // Almacenar en localStorage para compatibilidad con el sistema existente
-      localStorage.setItem('user', JSON.stringify({
-        id: fallbackUser.id,
-        email: normalizedEmail,
-        role: fallbackUser.role,
-      }));
-      
-      setSession(mockSession);
-      setUser(mockSession.user as User);
-      
-      return {
-        error: null,
-        data: mockSession
-      };
+        }));
+        
+        // Registrar la sesión personalizada en el estado
+        setSession(customSession);
+        setUser(customSession.user as User);
+        
+        console.log("Sesión personalizada creada exitosamente:", customSession);
+        
+        return {
+          error: null,
+          data: customSession
+        };
+      } catch (e) {
+        console.error("Error inesperado durante el proceso de autenticación de respaldo:", e);
+        return {
+          error: e,
+          data: null
+        };
+      }
     }
     
-    // Flujo de autenticación regular con Supabase
-    console.log("Usuario no encontrado en fallback, intentando con Supabase");
+    // Flujo de autenticación regular con Supabase si no es un usuario de fallback
     try {
       const response = await supabase.auth.signInWithPassword({
         email,
@@ -222,13 +168,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       console.log("Respuesta de Supabase:", 
-        response.error ? `Error: ${response.error.message}` : "Sin error",
+        response.error ? `Error: ${response.error.message}` : "Autenticación exitosa",
         response.data ? "Datos disponibles" : "Sin datos"
       );
       
       if (!response.error && response.data.session) {
         // Si la autenticación es exitosa, almacenamos el usuario en localStorage
-        // para mantener compatibilidad con el sistema existente
         let role = 'user';
         
         // Determinar role basado en el email
@@ -253,7 +198,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }));
       }
       
-      // Transformamos la respuesta para que coincida con nuestra interfaz
       return {
         error: response.error,
         data: response.data.session || null

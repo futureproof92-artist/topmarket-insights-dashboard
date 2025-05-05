@@ -331,7 +331,19 @@ const VentasPage = () => {
       
       // Asegurarnos de que la sesión de Supabase esté activa
       const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Sesión al guardar datos:", sessionData?.session ? "Activa" : "No hay sesión");
+      console.log("Sesión al guardar datos:", 
+        sessionData?.session ? "Activa con token: " + sessionData.session.access_token.substring(0, 10) + "..." : "No hay sesión"
+      );
+      
+      if (!sessionData?.session) {
+        console.error("No hay sesión activa de Supabase, intentando refresh...");
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        console.log("Resultado del refresh:", refreshData.session ? "Sesión refrescada" : "No se pudo refrescar");
+        
+        if (!refreshData.session) {
+          throw new Error("No hay sesión activa de Supabase y no se pudo refrescar. Por favor, inicie sesión nuevamente.");
+        }
+      }
       
       let historial_id;
       

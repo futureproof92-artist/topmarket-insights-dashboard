@@ -12,17 +12,19 @@ interface AppShellProps {
   };
 }
 
-export const AppShell = ({ children }: AppShellProps) => {
+export const AppShell = ({ children, user: propUser }: AppShellProps) => {
   const { user: authUser } = useAuth();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
   
-  // Cargar usuario desde localStorage para mantener compatibilidad
+  // Cargar usuario desde localStorage o desde auth context
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
+    
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      console.log("Usuario cargado desde localStorage:", JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      console.log("Usuario cargado desde localStorage:", parsedUser);
     } else if (authUser) {
       // Si no hay usuario en localStorage pero sí en la sesión de Supabase
       const email = authUser.email || '';
@@ -47,13 +49,17 @@ export const AppShell = ({ children }: AppShellProps) => {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
       console.log("Usuario generado desde authUser:", userData);
+    } else if (propUser) {
+      // Si se pasa un usuario como prop, usarlo como respaldo
+      setUser(propUser);
+      console.log("Usuario establecido desde props:", propUser);
     }
     
     const savedRole = localStorage.getItem('impersonatedRole');
     if (savedRole) {
       setImpersonatedRole(savedRole);
     }
-  }, [authUser]);
+  }, [authUser, propUser]);
 
   // Handle impersonation changes
   const handleImpersonate = (role: string | null) => {
@@ -65,6 +71,12 @@ export const AppShell = ({ children }: AppShellProps) => {
       localStorage.removeItem('impersonatedRole');
     }
   };
+
+  // Verificar si el usuario está disponible
+  if (!user && !authUser) {
+    console.log("No hay usuario disponible, mostrando pantalla de carga");
+    return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
