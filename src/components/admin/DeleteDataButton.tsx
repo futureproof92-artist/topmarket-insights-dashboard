@@ -48,7 +48,7 @@ export const DeleteDataButton = ({
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
       }
 
-      let error;
+      let error = null;
 
       if (deleteAllData && semana) {
         // Eliminar todos los datos de una semana específica

@@ -16,7 +16,10 @@ import NotFound from './pages/NotFound';
 import ReclutamientoPage from './pages/dashboard/ReclutamientoPage';
 import { useAuth } from '@/hooks/use-auth';
 
-function App() {
+// This component needs to be inside the AuthProvider
+const AuthenticatedRoutes = () => {
+  const { user, userRole, loading } = useAuth();
+  
   // Function to determine where to redirect based on user role
   const getRedirectPath = (userRole: string | null, userEmail: string | null) => {
     if (!userRole || !userEmail) return null;
@@ -41,46 +44,44 @@ function App() {
         return null;
     }
   };
+  
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
+        <p className="text-lg mb-4">Cargando aplicación...</p>
+      </div>
+    </div>;
+  }
 
-  const AppRoutes = () => {
-    const { user, userRole, loading } = useAuth();
-    
-    if (loading) {
-      return <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
-          <p className="text-lg mb-4">Cargando aplicación...</p>
-        </div>
-      </div>;
-    }
+  return (
+    <Routes>
+      {/* Home route with conditional redirect for authenticated users */}
+      <Route path="/" element={
+        user && getRedirectPath(userRole, user.email) 
+          ? <Navigate to={getRedirectPath(userRole, user.email) as string} replace /> 
+          : <Index />
+      } />
+      
+      <Route path="/login/:role" element={<UserLoginPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/ventas" element={<VentasPage />} />
+      <Route path="/historial" element={<HistorialPage />} />
+      <Route path="/cobranza" element={<CobranzaPage />} />
+      <Route path="/gastos-tdc" element={<GastosTdcPage />} />
+      <Route path="/hh-cerrados" element={<HhCerradosPage />} />
+      <Route path="/pxr-cerrados" element={<PxrCerradosPage />} />
+      <Route path="/reclutamiento" element={<ReclutamientoPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
-    return (
-      <Routes>
-        {/* Home route with conditional redirect for authenticated users */}
-        <Route path="/" element={
-          user && getRedirectPath(userRole, user.email) 
-            ? <Navigate to={getRedirectPath(userRole, user.email) as string} replace /> 
-            : <Index />
-        } />
-        
-        <Route path="/login/:role" element={<UserLoginPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/ventas" element={<VentasPage />} />
-        <Route path="/historial" element={<HistorialPage />} />
-        <Route path="/cobranza" element={<CobranzaPage />} />
-        <Route path="/gastos-tdc" element={<GastosTdcPage />} />
-        <Route path="/hh-cerrados" element={<HhCerradosPage />} />
-        <Route path="/pxr-cerrados" element={<PxrCerradosPage />} />
-        <Route path="/reclutamiento" element={<ReclutamientoPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    );
-  };
-
+function App() {
   return (
     <AuthProvider>
       <Router>
-        <AppRoutes />
+        <AuthenticatedRoutes />
       </Router>
       <Toaster />
     </AuthProvider>
