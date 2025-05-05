@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -56,7 +55,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
           toast({
             title: "Sesión por expirar",
             description: `Tu sesión expirará en ${timeRemaining} minutos. Considera cerrar sesión y volver a iniciar para renovar tu token.`,
-            variant: "warning"
+            variant: "default"
           });
         }
       } else {
