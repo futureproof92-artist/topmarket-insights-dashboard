@@ -4,7 +4,7 @@ import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertTriangle, HelpCircle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -45,22 +45,25 @@ const UserLoginPage = () => {
   const { user, session, signIn } = useAuth();
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginAttempts, setLoginAttempts] = useState(0);
+  const [jwtVerified, setJwtVerified] = useState(false);
   const userInfo = role ? getUserInfo(role) : null;
 
   useEffect(() => {
     // Resetear errores al cargar la página
     setLoginError(null);
     setLoginAttempts(0);
+    setJwtVerified(false);
     
-    // Si ya hay un usuario autenticado, redireccionar según su rol
-    if (user && session) {
-      console.log("[AUTH_DEBUG] Usuario autenticado detectado:", user.email);
+    // Si ya hay un usuario autenticado con JWT válido, redireccionar según su rol
+    if (user && session && session.access_token && session.access_token.startsWith('ey')) {
+      console.log("[AUTH_DEBUG] Usuario con JWT válido detectado:", user.email);
+      setJwtVerified(true);
       
       const userRole = user.user_metadata?.role || 
                      (user.email?.includes('sergio.t@topmarket.com.mx') ? 'admin' : null);
       
       if (userRole === 'admin' || user.email?.toLowerCase().includes('sergio.t@topmarket.com.mx')) {
-        console.log("[AUTH_DEBUG] Redirigiendo a administrador a /admin");
+        console.log("[AUTH_DEBUG] Redirigiendo a administrador a /admin (JWT verificado)");
         navigate('/admin');
         return;
       }
@@ -97,6 +100,9 @@ const UserLoginPage = () => {
             navigate('/reclutamiento');
           }
       }
+    } else if (user && !session?.access_token) {
+      console.log("[AUTH_DEBUG] ⚠️ Usuario detectado pero sin JWT válido");
+      setLoginError("Se detectó un usuario pero sin token JWT válido. Por favor inicia sesión de nuevo.");
     }
   }, [user, session, navigate]);
 
@@ -111,24 +117,32 @@ const UserLoginPage = () => {
       const { error, data } = await signIn(email, password);
       
       if (error || !data) {
-        console.error("[AUTH_DEBUG] Error durante el login:", error);
+        console.error("[AUTH_DEBUG] Error durante el login JWT:", error);
         setLoginAttempts(prev => prev + 1);
         
         // Mensaje personalizado según el número de intentos
         if (loginAttempts >= 2) {
-          setLoginError("Múltiples intentos fallidos. Este perfil de usuario debe ser creado en Supabase por un administrador.");
+          setLoginError("Múltiples intentos fallidos. Verifica que tu cuenta existe en Supabase o contacta al administrador.");
         } else {
-          setLoginError(error?.message || "Error al iniciar sesión. Inténtalo de nuevo.");
+          setLoginError(error?.message || "Error al iniciar sesión con JWT. Inténtalo de nuevo.");
         }
         return;
       }
       
-      console.log("[AUTH_DEBUG] Login exitoso en UserLoginPage:", email, role);
+      // Verificación adicional del token JWT
+      if (!data.access_token || !data.access_token.startsWith('ey')) {
+        console.error("[AUTH_DEBUG] Token JWT inválido generado");
+        setLoginError("Error de autenticación: Token JWT inválido. Contacta al administrador.");
+        return;
+      }
+      
+      console.log("[AUTH_DEBUG] Login JWT exitoso en UserLoginPage:", email, role);
+      setJwtVerified(true);
       
       // La redirección se manejará automáticamente en el useEffect
     } catch (error) {
-      console.error("[AUTH_DEBUG] Error inesperado durante el login:", error);
-      setLoginError("Error de conexión. Por favor intenta más tarde.");
+      console.error("[AUTH_DEBUG] Error inesperado durante el login JWT:", error);
+      setLoginError("Error de conexión al verificar JWT. Por favor intenta más tarde.");
     }
   };
 
@@ -137,7 +151,13 @@ const UserLoginPage = () => {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-gray-800">TopMarket</h2>
-          <p className="text-muted-foreground mt-2">Acceso para {userInfo.name}</p>
+          <p className="text-muted-foreground mt-2">Acceso seguro para {userInfo.name}</p>
+          {jwtVerified && (
+            <div className="flex items-center justify-center mt-2 text-green-600">
+              <ShieldCheck className="h-5 w-5 mr-1" />
+              <span className="text-sm">Autenticación JWT verificada</span>
+            </div>
+          )}
         </div>
 
         <Button 
@@ -152,7 +172,7 @@ const UserLoginPage = () => {
         {loginError && (
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Error de autenticación</AlertTitle>
+            <AlertTitle>Error de autenticación JWT</AlertTitle>
             <AlertDescription>
               {loginError}
             </AlertDescription>
@@ -170,15 +190,15 @@ const UserLoginPage = () => {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">
-                      Este sistema ahora usa autenticación con Supabase. Si no puedes acceder, 
-                      contacta al administrador para crear tu cuenta.
+                      Este sistema usa autenticación segura con Supabase JWT. Si no puedes acceder, 
+                      contacta al administrador para verificar tu cuenta.
                     </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </CardTitle>
             <CardDescription>
-              Ingresa tus credenciales para acceder
+              Ingresa tus credenciales para acceder de forma segura
             </CardDescription>
           </CardHeader>
           <CardContent>
