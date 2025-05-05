@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -32,6 +32,11 @@ export const LeadsForm = ({ leadsData, onLeadsChange }: LeadsFormProps) => {
       [field]: numValue
     });
   };
+
+  // Calcular el total de leads de publicidad
+  const totalLeadsPub = useMemo(() => {
+    return leadsData.leads_pub_em + leadsData.leads_pub_cl;
+  }, [leadsData.leads_pub_em, leadsData.leads_pub_cl]);
 
   return (
     <Card>
@@ -98,6 +103,14 @@ export const LeadsForm = ({ leadsData, onLeadsChange }: LeadsFormProps) => {
               onChange={(e) => handleInputChange('ventas_cerradas', e.target.value)}
               className="mt-1"
             />
+          </div>
+        </div>
+        
+        {/* Nuevo elemento para mostrar el total de leads de publicidad */}
+        <div className="mt-6 p-3 bg-slate-100 dark:bg-slate-800 rounded-md">
+          <div className="flex justify-between items-center">
+            <span className="font-medium">TOTAL DE LEADS DE PUBLICIDAD</span>
+            <span className="text-lg font-bold">{totalLeadsPub}</span>
           </div>
         </div>
       </CardContent>
