@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
-// Define specific concrete error type to prevent deep instantiation
+// Define a simple error interface with only the properties we need
 interface SupabaseErrorObject {
   message?: string;
   details?: string;
@@ -17,7 +17,7 @@ interface SupabaseErrorObject {
   hint?: string;
 }
 
-// Use a simple union type instead of a complex nested structure
+// Use a simple type for tracking errors
 type SupabaseError = SupabaseErrorObject | null;
 
 interface DeleteDataButtonProps {
@@ -59,7 +59,7 @@ export const DeleteDataButton = ({
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
       }
 
-      // Inicializar con valor concreto y tipado explícito
+      // Initialize with explicit null value
       let error: SupabaseError = null;
 
       if (deleteAllData && semana) {
@@ -75,7 +75,14 @@ export const DeleteDataButton = ({
           
           if (ventasError) {
             console.error("[DELETE_DEBUG] Error al eliminar detalles de ventas:", ventasError);
-            throw ventasError;
+            // Cast to our simplified error type rather than using complex inference
+            error = { 
+              message: ventasError.message,
+              details: (ventasError as any).details,
+              code: (ventasError as any).code,
+              hint: (ventasError as any).hint
+            };
+            throw error;
           }
           
           // Luego eliminamos el registro del historial
@@ -83,16 +90,32 @@ export const DeleteDataButton = ({
             .from('historial_semanal')
             .delete()
             .eq('id', semanaId);
-            
-          error = historialError;
+          
+          // Cast to our simplified error type  
+          if (historialError) {
+            error = { 
+              message: historialError.message,
+              details: (historialError as any).details,
+              code: (historialError as any).code,
+              hint: (historialError as any).hint
+            };
+          }
         } else {
           // Para otras tablas, eliminamos por semana
           const { error: deleteError } = await supabase
             .from(tableName)
             .delete()
             .eq('semana', semana);
-            
-          error = deleteError;
+          
+          // Cast to our simplified error type
+          if (deleteError) {
+            error = { 
+              message: deleteError.message,
+              details: (deleteError as any).details,
+              code: (deleteError as any).code,
+              hint: (deleteError as any).hint
+            };
+          }
         }
       } else if (recordId) {
         // Eliminar un registro específico
@@ -102,8 +125,16 @@ export const DeleteDataButton = ({
           .from(tableName)
           .delete()
           .eq('id', recordId);
-          
-        error = deleteError;
+        
+        // Cast to our simplified error type
+        if (deleteError) {
+          error = { 
+            message: deleteError.message,
+            details: (deleteError as any).details,
+            code: (deleteError as any).code,
+            hint: (deleteError as any).hint
+          };
+        }
       } else {
         throw new Error("No se proporcionó un ID de registro o información de semana para eliminar.");
       }
@@ -131,7 +162,7 @@ export const DeleteDataButton = ({
       if (error instanceof Error) {
         errorMessage += `: ${error.message}`;
       } else if (typeof error === 'object' && error !== null) {
-        // Si es un error de Supabase, manejamos con tipado explícito
+        // Use a simple cast to our defined error type
         const supabaseError = error as SupabaseErrorObject;
         if (supabaseError.message) {
           errorMessage += `: ${supabaseError.message}`;
