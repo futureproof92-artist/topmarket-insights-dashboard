@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 interface WeekRange {
   startDate: Date;
@@ -72,6 +73,7 @@ const VentasPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
+  const { session } = useAuth();
 
   // Efecto para cargar el usuario y configurar la interfaz inicial
   useEffect(() => {
@@ -312,6 +314,11 @@ const VentasPage = () => {
       setIsLoading(true);
       setErrorMessage(null);
       
+      // Verificar si existe una sesión activa de Supabase
+      if (!session) {
+        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+      }
+      
       // Verificar si ya existe un registro para esta semana
       const { data: existingSemana, error: searchError } = await supabase
         .from('historial_semanal')
@@ -329,21 +336,10 @@ const VentasPage = () => {
       const currentUser = storedUser ? JSON.parse(storedUser) : null;
       console.log("Usuario actual realizando guardado:", currentUser);
       
-      // Asegurarnos de que la sesión de Supabase esté activa
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Sesión al guardar datos:", 
-        sessionData?.session ? "Activa con token: " + sessionData.session.access_token.substring(0, 10) + "..." : "No hay sesión"
+      // Verificar la validez de la sesión antes de continuar
+      console.log("Estado de sesión al guardar:", 
+        session ? "Activa con token: " + session.access_token.substring(0, 10) + "..." : "No hay sesión"
       );
-      
-      if (!sessionData?.session) {
-        console.error("No hay sesión activa de Supabase, intentando refresh...");
-        const { data: refreshData } = await supabase.auth.refreshSession();
-        console.log("Resultado del refresh:", refreshData.session ? "Sesión refrescada" : "No se pudo refrescar");
-        
-        if (!refreshData.session) {
-          throw new Error("No hay sesión activa de Supabase y no se pudo refrescar. Por favor, inicie sesión nuevamente.");
-        }
-      }
       
       let historial_id;
       
@@ -462,6 +458,26 @@ const VentasPage = () => {
       
     } catch (error) {
       console.error("Error al guardar datos:", error);
+      
+      // Si es un error de autenticación, intentar refrescar la sesión
+      if (error instanceof Error && 
+          (error.message.includes("JWT") || 
+           error.message.includes("sesión") || 
+           error.message.includes("token"))) {
+        
+        toast({
+          title: "Error de sesión",
+          description: "Tu sesión ha expirado. Se intentará reconectar automáticamente.",
+          variant: "destructive"
+        });
+        
+        // Esperar un momento y luego refrescar la página
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+        
+        return;
+      }
       
       // Extraer mensaje de error detallado para mostrar al usuario
       let errorDesc = "No se pudo guardar la información semanal";

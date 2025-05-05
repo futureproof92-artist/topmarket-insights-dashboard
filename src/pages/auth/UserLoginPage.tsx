@@ -40,75 +40,25 @@ const getUserInfo = (role: string) => {
 const UserLoginPage = () => {
   const { role } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session, signIn } = useAuth();
   const userInfo = role ? getUserInfo(role) : null;
 
   useEffect(() => {
     // Si ya hay un usuario autenticado, redireccionar según su rol
-    if (user) {
+    if (user && session) {
       console.log("Usuario autenticado detectado:", user.email);
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        console.log("Datos de usuario en localStorage:", userData);
-        
-        // Redirección específica para el administrador
-        if (userData.email.toLowerCase().includes('sergio.t@topmarket.com.mx') || userData.role === 'admin') {
-          console.log("Redirigiendo a administrador a /admin");
-          navigate('/admin');
-          return;
-        }
-        
-        // Para otros usuarios, redirección basada en email/role
-        if (userData.email.includes('dcomercial')) {
-          navigate('/ventas');
-        } else if (userData.email.includes('rys_cdmx')) {
-          navigate('/pxr-cerrados');
-        } else if (userData.email.includes('rlaboral')) {
-          navigate('/hh-cerrados');
-        } else if (userData.email.includes('administracion')) {
-          navigate('/cobranza');
-        } else if (userData.email.includes('reclutamiento')) {
-          navigate('/reclutamiento');
-        }
+      
+      const userRole = user.user_metadata?.role || 
+                     (user.email?.includes('sergio.t@topmarket.com.mx') ? 'admin' : null);
+      
+      if (userRole === 'admin' || user.email?.toLowerCase().includes('sergio.t@topmarket.com.mx')) {
+        console.log("Redirigiendo a administrador a /admin");
+        navigate('/admin');
+        return;
       }
-    }
-  }, [user, navigate]);
-
-  if (!userInfo) {
-    console.log("Rol no válido, redirigiendo a la página principal");
-    return <Navigate to="/" replace />;
-  }
-
-  const handleLogin = (email: string, password: string) => {
-    console.log("Login exitoso en UserLoginPage:", email, role);
-    
-    // Mantener compatibilidad con el sistema anterior
-    const userData = { email, role };
-    localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.removeItem('impersonatedRole');
-    
-    // Redirección específica para el administrador
-    if (email.toLowerCase().includes('sergio.t@topmarket.com.mx') || role === 'admin') {
-      console.log("Redirigiendo a administrador a /admin");
-      navigate('/admin');
-      return;
-    }
-    
-    // Para otros usuarios, redirección basada en email/role
-    if (email.includes('dcomercial')) {
-      navigate('/ventas');
-    } else if (email.includes('rys_cdmx')) {
-      navigate('/pxr-cerrados');
-    } else if (email.includes('rlaboral')) {
-      navigate('/hh-cerrados');
-    } else if (email.includes('administracion')) {
-      navigate('/cobranza');
-    } else if (email.includes('reclutamiento')) {
-      navigate('/reclutamiento');
-    } else {
-      // Fallback basado en el rol actual
-      switch(role) {
+      
+      // Para otros usuarios, redirección basada en rol
+      switch(userRole) {
         case 'evelyn':
           navigate('/ventas');
           break;
@@ -121,13 +71,46 @@ const UserLoginPage = () => {
         case 'karla':
           navigate('/reclutamiento');
           break;
-        case 'nataly':
         case 'cobranza':
           navigate('/cobranza');
           break;
         default:
-          navigate('/');
+          // Fallback basado en email
+          const email = user.email?.toLowerCase() || '';
+          if (email.includes('dcomercial')) {
+            navigate('/ventas');
+          } else if (email.includes('rys_cdmx')) {
+            navigate('/pxr-cerrados');
+          } else if (email.includes('rlaboral')) {
+            navigate('/hh-cerrados');
+          } else if (email.includes('administracion')) {
+            navigate('/cobranza');
+          } else if (email.includes('reclutamiento')) {
+            navigate('/reclutamiento');
+          }
       }
+    }
+  }, [user, session, navigate]);
+
+  if (!userInfo) {
+    console.log("Rol no válido, redirigiendo a la página principal");
+    return <Navigate to="/" replace />;
+  }
+
+  const handleLogin = async (email: string, password: string) => {
+    try {
+      const { error, data } = await signIn(email, password);
+      
+      if (error || !data) {
+        console.error("Error durante el login:", error);
+        return;
+      }
+      
+      console.log("Login exitoso en UserLoginPage:", email, role);
+      
+      // La redirección se manejará automáticamente en el useEffect
+    } catch (error) {
+      console.error("Error inesperado durante el login:", error);
     }
   };
 
