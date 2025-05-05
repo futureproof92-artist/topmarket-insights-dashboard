@@ -9,11 +9,16 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
-// Define specific error type to prevent deep instantiation
-type SupabaseError = {
+// Define specific concrete error type to prevent deep instantiation
+interface SupabaseErrorObject {
   message?: string;
   details?: string;
-} | null;
+  code?: string;
+  hint?: string;
+}
+
+// Use a simple union type instead of a complex nested structure
+type SupabaseError = SupabaseErrorObject | null;
 
 interface DeleteDataButtonProps {
   tableName: ValidTableName;
@@ -54,7 +59,7 @@ export const DeleteDataButton = ({
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
       }
 
-      // Explicitly type the error to prevent deep instantiation
+      // Inicializar con valor concreto y tipado explícito
       let error: SupabaseError = null;
 
       if (deleteAllData && semana) {
@@ -126,8 +131,8 @@ export const DeleteDataButton = ({
       if (error instanceof Error) {
         errorMessage += `: ${error.message}`;
       } else if (typeof error === 'object' && error !== null) {
-        // Si es un error de Supabase
-        const supabaseError = error as any;
+        // Si es un error de Supabase, manejamos con tipado explícito
+        const supabaseError = error as SupabaseErrorObject;
         if (supabaseError.message) {
           errorMessage += `: ${supabaseError.message}`;
         }
