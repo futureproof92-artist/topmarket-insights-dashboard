@@ -6,8 +6,10 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { DeleteDataButton } from '@/components/admin/DeleteDataButton';
 
-// Interface for cobranza data
+// Interface para cobranza data
 interface CobranzaData {
   id: string;
   semana: string;
@@ -19,6 +21,8 @@ interface CobranzaData {
 
 export const CobranzaKpiSemanal = () => {
   const { toast } = useToast();
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
   const [currentDate, setCurrentDate] = useState(new Date(2025, 3, 28)); // 28 de abril de 2025
   const [isLoading, setIsLoading] = useState(true);
   const [weeklyData, setWeeklyData] = useState<CobranzaData | null>(null);
@@ -63,46 +67,46 @@ export const CobranzaKpiSemanal = () => {
   const weekKey = format(startOfCurrentWeek, 'yyyy-MM-dd');
 
   // Cargar datos de la semana seleccionada
-  useEffect(() => {
-    const fetchWeekData = async () => {
-      setIsLoading(true);
-      try {
-        // Buscar datos para la semana actual
-        const { data, error } = await supabase
-          .from('cobranza')
-          .select('*')
-          .eq('semana', weekKey)
-          .single();
+  const fetchWeekData = async () => {
+    setIsLoading(true);
+    try {
+      // Buscar datos para la semana actual
+      const { data, error } = await supabase
+        .from('cobranza')
+        .select('*')
+        .eq('semana', weekKey)
+        .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 es el código cuando no se encuentra un registro
-          throw error;
-        }
-
-        if (data) {
-          setWeeklyData(data);
-          setFormData({
-            cobrado_total: data.cobrado_total,
-            pagos_no_confirmados: data.pagos_no_confirmados
-          });
-        } else {
-          setWeeklyData(null);
-          setFormData({
-            cobrado_total: 0,
-            pagos_no_confirmados: 0
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching cobranza data:', error);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los datos de cobranza",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
+      if (error && error.code !== 'PGRST116') { // PGRST116 es el código cuando no se encuentra un registro
+        throw error;
       }
-    };
 
+      if (data) {
+        setWeeklyData(data);
+        setFormData({
+          cobrado_total: data.cobrado_total,
+          pagos_no_confirmados: data.pagos_no_confirmados
+        });
+      } else {
+        setWeeklyData(null);
+        setFormData({
+          cobrado_total: 0,
+          pagos_no_confirmados: 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching cobranza data:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos de cobranza",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchWeekData();
   }, [currentDate, toast]);
 
@@ -296,11 +300,20 @@ export const CobranzaKpiSemanal = () => {
               title="PAGOS NO CONFIRMADOS"
               value={pagosNoConfirmados}
             />
-            {isNataliZarate && (
-              <div className="md:col-span-2 flex justify-end mt-2">
+            <div className="md:col-span-2 flex justify-end mt-2 space-x-2">
+              {isNataliZarate && (
                 <Button onClick={() => setIsEditing(true)}>Editar Datos</Button>
-              </div>
-            )}
+              )}
+              {isAdmin && weeklyData && (
+                <DeleteDataButton 
+                  tableName="cobranza"
+                  recordId={weeklyData.id}
+                  onSuccess={handleDataDeleted}
+                  buttonText="Eliminar datos"
+                  buttonVariant="destructive"
+                />
+              )}
+            </div>
           </div>
         )}
       </CardContent>

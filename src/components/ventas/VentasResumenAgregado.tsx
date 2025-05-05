@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,6 +5,8 @@ import { VentaDetalle } from '@/pages/dashboard/VentasPage';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
+import { useAuth } from '@/context/AuthContext';
+import { DeleteDataButton } from '@/components/admin/DeleteDataButton';
 
 interface LeadsData {
   leads_pub_em: number;
@@ -19,17 +20,23 @@ interface HistorialItem {
   semana: string;
   leads: LeadsData;
   ventasDetalle: VentaDetalle[];
+  id?: string; // Añadido para facilitar la eliminación
 }
 
 interface VentasResumenAgregadoProps {
   historial: HistorialItem[];
   dateRange?: DateRange; // Updated to use DateRange from react-day-picker
+  onDataChange?: () => void; // Callback para notificar cambios
 }
 
 export const VentasResumenAgregado = ({
   historial,
-  dateRange
+  dateRange,
+  onDataChange
 }: VentasResumenAgregadoProps) => {
+  const { userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
+  
   // Calcular periodo seleccionado
   const periodoSeleccionado = useMemo(() => {
     if (!dateRange?.from) {
@@ -208,6 +215,7 @@ export const VentasResumenAgregado = ({
       </div>;
   }
 
+  // Mostrar la UI
   return <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Resumen Agregado</h2>
@@ -283,5 +291,49 @@ export const VentasResumenAgregado = ({
             </TableBody>
           </Table>
         </div>}
+        
+        {/* Tabla de semanas con opciones de eliminación (solo para administradores) */}
+        {isAdmin && historial.length > 0 && (
+          <div className="overflow-x-auto mt-8">
+            <h3 className="font-semibold mb-4">Administrar Semanas</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Semana</TableHead>
+                  <TableHead>Leads Totales</TableHead>
+                  <TableHead>Ventas</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historial.map((item, idx) => (
+                  <TableRow key={`admin-semana-${idx}`}>
+                    <TableCell>{item.semana}</TableCell>
+                    <TableCell>
+                      {item.leads.leads_pub_em + item.leads.leads_pub_cl + 
+                       item.leads.leads_frio_em + item.leads.leads_frio_cl}
+                    </TableCell>
+                    <TableCell>{item.ventasDetalle.length}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        {item.id && (
+                          <DeleteDataButton 
+                            tableName="historial_semanal"
+                            semanaId={item.id}
+                            semana={item.semana}
+                            deleteAllData={true}
+                            onSuccess={onDataChange}
+                            buttonText="Eliminar semana"
+                            buttonVariant="destructive"
+                          />
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
     </div>;
 };

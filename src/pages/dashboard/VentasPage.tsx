@@ -69,6 +69,7 @@ const VentasPage = () => {
   const [ventasDetalle, setVentasDetalle] = useState<VentaDetalle[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [historialSemanas, setHistorialSemanas] = useState<{
+    id: string; // Añadimos el ID para permitir la eliminación
     semana: string;
     leads: LeadsData;
     ventasDetalle: VentaDetalle[];
@@ -163,6 +164,7 @@ const VentasPage = () => {
           })) : [];
           
           return {
+            id: semana.id, // Añadimos el ID para permitir la eliminación
             semana: semana.semana,
             leads: {
               leads_pub_em: semana.leads_pub_em || 0,
@@ -587,11 +589,18 @@ const VentasPage = () => {
               </TabsList>
               
               <TabsContent value="resumen">
-                <VentasResumenAgregado historial={historialSemanas} dateRange={dateRange} />
+                <VentasResumenAgregado 
+                  historial={historialSemanas} 
+                  dateRange={dateRange} 
+                  onDataChange={loadHistorialSemanas} 
+                />
               </TabsContent>
               
               <TabsContent value="detalle">
-                <HistorialSemanal historial={historialSemanas} />
+                <HistorialSemanal 
+                  historial={historialSemanas} 
+                  onDataChange={loadHistorialSemanas} 
+                />
               </TabsContent>
             </Tabs>
           </div>
