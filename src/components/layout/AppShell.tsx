@@ -26,12 +26,24 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
         userId: session.user.id,
         tokenActivo: !!session.access_token,
         expira: new Date(session.expires_at * 1000).toLocaleString(),
-        tiempoRestante: Math.round((session.expires_at - Date.now()/1000)/60) + " minutos"
+        tiempoRestante: Math.round((session.expires_at - Date.now()/1000)/60) + " minutos",
+        fuente: session.access_token.startsWith("ey") ? "Supabase" : "Fallback"
       });
     } else {
-      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión activa");
+      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión activa de Supabase");
     }
-  }, [session]);
+    
+    // Log del estado de usuario
+    if (authUser) {
+      console.log("[AUTH_DEBUG] AppShell: Usuario autenticado:", {
+        id: authUser.id,
+        email: authUser.email,
+        role: userRole || 'sin_rol'
+      });
+    } else {
+      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay usuario autenticado");
+    }
+  }, [session, authUser, userRole]);
   
   // Cargar usuario desde context o localStorage
   useEffect(() => {

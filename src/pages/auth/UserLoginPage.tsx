@@ -1,11 +1,12 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const getUserInfo = (role: string) => {
   const userInfo = {
@@ -41,18 +42,24 @@ const UserLoginPage = () => {
   const { role } = useParams();
   const navigate = useNavigate();
   const { user, session, signIn } = useAuth();
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginAttempts, setLoginAttempts] = useState(0);
   const userInfo = role ? getUserInfo(role) : null;
 
   useEffect(() => {
+    // Resetear errores al cargar la página
+    setLoginError(null);
+    setLoginAttempts(0);
+    
     // Si ya hay un usuario autenticado, redireccionar según su rol
-    if (user && session) {
-      console.log("Usuario autenticado detectado:", user.email);
+    if (user && (session || user.id?.toString().includes('fallback'))) {
+      console.log("[AUTH_DEBUG] Usuario autenticado detectado:", user.email);
       
       const userRole = user.user_metadata?.role || 
                      (user.email?.includes('sergio.t@topmarket.com.mx') ? 'admin' : null);
       
       if (userRole === 'admin' || user.email?.toLowerCase().includes('sergio.t@topmarket.com.mx')) {
-        console.log("Redirigiendo a administrador a /admin");
+        console.log("[AUTH_DEBUG] Redirigiendo a administrador a /admin");
         navigate('/admin');
         return;
       }
@@ -93,24 +100,34 @@ const UserLoginPage = () => {
   }, [user, session, navigate]);
 
   if (!userInfo) {
-    console.log("Rol no válido, redirigiendo a la página principal");
+    console.log("[AUTH_DEBUG] Rol no válido, redirigiendo a la página principal");
     return <Navigate to="/" replace />;
   }
 
   const handleLogin = async (email: string, password: string) => {
     try {
-      const { error, data } = await signIn(email, password);
+      setLoginError(null);
+      const { error, data, source } = await signIn(email, password);
       
       if (error || !data) {
-        console.error("Error durante el login:", error);
+        console.error("[AUTH_DEBUG] Error durante el login:", error, "Fuente:", source);
+        setLoginAttempts(prev => prev + 1);
+        
+        // Mensaje personalizado según el número de intentos
+        if (loginAttempts >= 2) {
+          setLoginError("Múltiples intentos fallidos. Verifica que estás usando las credenciales correctas para este perfil.");
+        } else {
+          setLoginError(error?.message || "Error al iniciar sesión. Inténtalo de nuevo.");
+        }
         return;
       }
       
-      console.log("Login exitoso en UserLoginPage:", email, role);
+      console.log("[AUTH_DEBUG] Login exitoso en UserLoginPage:", email, role, "Fuente:", source);
       
       // La redirección se manejará automáticamente en el useEffect
     } catch (error) {
-      console.error("Error inesperado durante el login:", error);
+      console.error("[AUTH_DEBUG] Error inesperado durante el login:", error);
+      setLoginError("Error de conexión. Por favor intenta más tarde.");
     }
   };
 
@@ -130,6 +147,16 @@ const UserLoginPage = () => {
           <ArrowLeft className="mr-2" size={16} />
           Menú Principal
         </Button>
+
+        {loginError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error de autenticación</AlertTitle>
+            <AlertDescription>
+              {loginError}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardHeader>
