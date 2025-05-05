@@ -15,7 +15,7 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ children, user: propUser }: AppShellProps) => {
-  const { user: authUser, userRole, session } = useAuth();
+  const { user: authUser, userRole, session, signOut } = useAuth();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
   const { toast } = useToast();
@@ -23,52 +23,70 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
   
   // Validar sesión JWT cada vez que AppShell se renderiza
   useEffect(() => {
-    // Verificación estricta de sesión JWT
-    if (session) {
-      console.log("[AUTH_DEBUG] AppShell: Sesión JWT disponible", {
-        userId: session.user.id,
-        tokenActivo: !!session.access_token,
-        expira: new Date(session.expires_at * 1000).toLocaleString(),
-        tiempoRestante: Math.round((session.expires_at - Date.now()/1000)/60) + " minutos",
-        fuente: session.access_token.startsWith("ey") ? "Supabase JWT" : "Token inválido"
-      });
+    const validateJwtSession = async () => {
+      // Verificación estricta de sesión JWT
+      if (session) {
+        const tokenExpiration = session.expires_at * 1000;
+        const timeRemaining = Math.round((tokenExpiration - Date.now())/60000);
+        
+        console.log("[AUTH_DEBUG] AppShell: Sesión JWT disponible", {
+          userId: session.user.id,
+          tokenActivo: !!session.access_token,
+          expira: new Date(tokenExpiration).toLocaleString(),
+          tiempoRestante: timeRemaining + " minutos",
+          fuente: session.access_token.startsWith("ey") ? "Supabase JWT" : "Token inválido"
+        });
+        
+        // Validar token JWT
+        if (!session.access_token || !session.access_token.startsWith("ey")) {
+          console.log("[AUTH_DEBUG] AppShell: ⚠️ Token JWT inválido detectado - Cerrando sesión");
+          await signOut();
+          toast({
+            title: "Error de autenticación",
+            description: "Tu token de sesión es inválido. Por favor inicia sesión de nuevo.",
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
+        }
+        
+        // Advertir si el token está por expirar (menos de 10 minutos)
+        if (timeRemaining < 10) {
+          console.log("[AUTH_DEBUG] AppShell: ⚠️ Token JWT a punto de expirar");
+          toast({
+            title: "Sesión por expirar",
+            description: `Tu sesión expirará en ${timeRemaining} minutos. Considera cerrar sesión y volver a iniciar para renovar tu token.`,
+            variant: "warning"
+          });
+        }
+      } else {
+        console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión JWT activa");
+        // Redirigir solo si no estamos ya en la página principal
+        if (window.location.pathname !== '/' && !window.location.pathname.startsWith('/login')) {
+          toast({
+            title: "Sesión no disponible",
+            description: "No se encontró una sesión activa. Por favor inicia sesión.",
+            variant: "destructive"
+          });
+          navigate('/');
+          return;
+        }
+      }
       
-      // Validar token JWT
-      if (!session.access_token || !session.access_token.startsWith("ey")) {
-        console.log("[AUTH_DEBUG] AppShell: ⚠️ Token JWT inválido detectado");
-        toast({
-          title: "Error de autenticación",
-          description: "Tu sesión es inválida. Por favor inicia sesión de nuevo.",
-          variant: "destructive"
+      // Log del estado de usuario
+      if (authUser) {
+        console.log("[AUTH_DEBUG] AppShell: Usuario autenticado:", {
+          id: authUser.id,
+          email: authUser.email,
+          role: userRole || 'sin_rol'
         });
-        navigate('/');
-        return;
+      } else {
+        console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay usuario autenticado");
       }
-    } else {
-      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión JWT activa");
-      // Redirigir solo si no estamos ya en la página principal
-      if (window.location.pathname !== '/') {
-        toast({
-          title: "Sesión expirada",
-          description: "Tu sesión ha expirado. Por favor inicia sesión de nuevo.",
-          variant: "destructive"
-        });
-        navigate('/');
-        return;
-      }
-    }
+    };
     
-    // Log del estado de usuario
-    if (authUser) {
-      console.log("[AUTH_DEBUG] AppShell: Usuario autenticado:", {
-        id: authUser.id,
-        email: authUser.email,
-        role: userRole || 'sin_rol'
-      });
-    } else {
-      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay usuario autenticado");
-    }
-  }, [session, authUser, userRole, navigate, toast]);
+    validateJwtSession();
+  }, [session, authUser, userRole, navigate, toast, signOut]);
   
   // Cargar usuario desde context 
   useEffect(() => {

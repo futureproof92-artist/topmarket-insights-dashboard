@@ -4,10 +4,11 @@ import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertTriangle, HelpCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, HelpCircle, ShieldCheck, Info } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useToast } from '@/hooks/use-toast';
 
 const getUserInfo = (role: string) => {
   const userInfo = {
@@ -43,9 +44,11 @@ const UserLoginPage = () => {
   const { role } = useParams();
   const navigate = useNavigate();
   const { user, session, signIn } = useAuth();
+  const { toast } = useToast();
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginAttempts, setLoginAttempts] = useState(0);
   const [jwtVerified, setJwtVerified] = useState(false);
+  const [setupMode, setSetupMode] = useState(false);
   const userInfo = role ? getUserInfo(role) : null;
 
   useEffect(() => {
@@ -54,7 +57,7 @@ const UserLoginPage = () => {
     setLoginAttempts(0);
     setJwtVerified(false);
     
-    // Si ya hay un usuario autenticado con JWT válido, redireccionar según su rol
+    // Verificar estado de autenticación
     if (user && session && session.access_token && session.access_token.startsWith('ey')) {
       console.log("[AUTH_DEBUG] Usuario con JWT válido detectado:", user.email);
       setJwtVerified(true);
@@ -110,6 +113,10 @@ const UserLoginPage = () => {
     console.log("[AUTH_DEBUG] Rol no válido, redirigiendo a la página principal");
     return <Navigate to="/" replace />;
   }
+
+  const toggleSetupMode = () => {
+    setSetupMode(!setupMode);
+  };
 
   const handleLogin = async (email: string, password: string) => {
     try {
@@ -168,6 +175,33 @@ const UserLoginPage = () => {
           <ArrowLeft className="mr-2" size={16} />
           Menú Principal
         </Button>
+        
+        <Button 
+          variant="ghost" 
+          onClick={toggleSetupMode}
+          className="mb-1 flex items-center justify-center w-full text-xs"
+          size="sm"
+        >
+          <Info className="mr-1" size={12} />
+          {setupMode ? "Ocultar información técnica" : "Ver información técnica"}
+        </Button>
+
+        {setupMode && (
+          <Alert className="mb-4 bg-blue-50 text-blue-800 border-blue-200">
+            <Info className="h-4 w-4" />
+            <AlertTitle className="text-sm font-semibold">Información de configuración</AlertTitle>
+            <AlertDescription className="text-xs">
+              <p className="mt-1">Esta aplicación requiere que las cuentas de usuario existan en Supabase.</p>
+              <p className="mt-1">Para configurar el sistema:</p>
+              <ol className="list-decimal ml-4 mt-1 space-y-1">
+                <li>Crea las cuentas de usuario en el panel de Supabase</li>
+                <li>Usa las mismas direcciones de correo que identifican a cada rol</li>
+                <li>Asegúrate de que la autenticación por email/password esté habilitada</li>
+                <li>Para pruebas, deshabilita la verificación de email</li>
+              </ol>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {loginError && (
           <Alert variant="destructive" className="mb-4">
