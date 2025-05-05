@@ -25,6 +25,7 @@ interface LeadsData {
   leads_frio_em: number;
   leads_frio_cl: number;
   ventas_cerradas: number;
+  leads_google_ads: number;
 }
 export interface VentaDetalle {
   id: string;
@@ -69,7 +70,8 @@ const VentasPage = () => {
     leads_pub_cl: 0,
     leads_frio_em: 0,
     leads_frio_cl: 0,
-    ventas_cerradas: 0
+    ventas_cerradas: 0,
+    leads_google_ads: 0
   });
   const [ventasDetalle, setVentasDetalle] = useState<VentaDetalle[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -175,7 +177,8 @@ const VentasPage = () => {
             leads_pub_cl: semana.leads_pub_cl || 0,
             leads_frio_em: semana.leads_frio_em || 0,
             leads_frio_cl: semana.leads_frio_cl || 0,
-            ventas_cerradas: semana.ventas_cerradas || 0
+            ventas_cerradas: semana.ventas_cerradas || 0,
+            leads_google_ads: semana.leads_google_ads || 0
           },
           ventasDetalle: ventasFormateadas
         };
@@ -214,7 +217,8 @@ const VentasPage = () => {
           leads_pub_cl: semanaExistente.leads_pub_cl || 0,
           leads_frio_em: semanaExistente.leads_frio_em || 0,
           leads_frio_cl: semanaExistente.leads_frio_cl || 0,
-          ventas_cerradas: semanaExistente.ventas_cerradas || 0
+          ventas_cerradas: semanaExistente.ventas_cerradas || 0,
+          leads_google_ads: semanaExistente.leads_google_ads || 0
         });
 
         // Cargar las ventas detalle
@@ -252,7 +256,8 @@ const VentasPage = () => {
           leads_pub_cl: 0,
           leads_frio_em: 0,
           leads_frio_cl: 0,
-          ventas_cerradas: 0
+          ventas_cerradas: 0,
+          leads_google_ads: 0
         });
         setVentasDetalle([]);
       }
@@ -362,6 +367,7 @@ const VentasPage = () => {
           leads_frio_em: leadsData.leads_frio_em,
           leads_frio_cl: leadsData.leads_frio_cl,
           ventas_cerradas: leadsData.ventas_cerradas,
+          leads_google_ads: leadsData.leads_google_ads,
           updated_at: new Date().toISOString()
         }).eq('id', historial_id);
         if (updateError) {
@@ -382,7 +388,8 @@ const VentasPage = () => {
           leads_pub_cl: leadsData.leads_pub_cl,
           leads_frio_em: leadsData.leads_frio_em,
           leads_frio_cl: leadsData.leads_frio_cl,
-          ventas_cerradas: leadsData.ventas_cerradas
+          ventas_cerradas: leadsData.ventas_cerradas,
+          leads_google_ads: leadsData.leads_google_ads
         };
         console.log("Datos a insertar:", insertData);
         const {
