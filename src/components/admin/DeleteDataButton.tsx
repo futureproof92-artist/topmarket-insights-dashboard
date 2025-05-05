@@ -9,6 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
+// Define una interfaz simple para errores
+interface SimpleError {
+  message: string;
+}
+
 interface DeleteDataButtonProps {
   tableName: ValidTableName;
   recordId?: string;
@@ -63,7 +68,8 @@ export const DeleteDataButton = ({
           
           if (ventasError) {
             console.error("[DELETE_DEBUG] Error al eliminar detalles de ventas:", ventasError);
-            errorMessage = ventasError.message;
+            // Usar aserción de tipo para simplificar la inferencia
+            errorMessage = (ventasError as SimpleError).message;
             throw new Error(errorMessage);
           }
           
@@ -74,7 +80,8 @@ export const DeleteDataButton = ({
             .eq('id', semanaId);
           
           if (historialError) {
-            errorMessage = historialError.message;
+            // Usar aserción de tipo para simplificar la inferencia
+            errorMessage = (historialError as SimpleError).message;
           }
         } else {
           // Para otras tablas, eliminamos por semana
@@ -84,7 +91,8 @@ export const DeleteDataButton = ({
             .eq('semana', semana);
           
           if (deleteError) {
-            errorMessage = deleteError.message;
+            // Usar aserción de tipo para simplificar la inferencia
+            errorMessage = (deleteError as SimpleError).message;
           }
         }
       } else if (recordId) {
@@ -97,7 +105,8 @@ export const DeleteDataButton = ({
           .eq('id', recordId);
         
         if (deleteError) {
-          errorMessage = deleteError.message;
+          // Usar aserción de tipo para simplificar la inferencia
+          errorMessage = (deleteError as SimpleError).message;
         }
       } else {
         throw new Error("No se proporcionó un ID de registro o información de semana para eliminar.");
