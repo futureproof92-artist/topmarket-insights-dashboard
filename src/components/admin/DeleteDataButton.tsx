@@ -9,12 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
-// Simple error type without complex nesting
-type SimpleError = {
-  message?: string;
-  details?: string;
-};
-
 interface DeleteDataButtonProps {
   tableName: ValidTableName;
   recordId?: string;
