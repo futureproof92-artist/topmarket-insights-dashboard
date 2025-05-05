@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,87 +84,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         console.log("[AUTH_DEBUG] Iniciando configuración de autenticación");
         
+        // Intentar recuperar la sesión primero para evitar flashes de UI
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        console.log("[AUTH_DEBUG] Sesión inicial:", existingSession ? "Encontrada" : "No encontrada");
+        
+        if (existingSession) {
+          setSession(existingSession);
+          setUser(existingSession.user);
+          
+          const role = existingSession.user.user_metadata?.role || 
+                      determineRoleFromEmail(existingSession.user.email || '');
+          
+          setUserRole(role);
+          syncUserToLocalStorage(existingSession.user, existingSession);
+          console.log("[AUTH_DEBUG] Rol establecido:", role);
+        }
+        
         // Establece el listener para cambios de autenticación
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, currentSession) => {
-            console.log("[AUTH_DEBUG] Cambio en estado de autenticación:", event, currentSession ? "Sesión presente" : "Sin sesión");
+            console.log("[AUTH_DEBUG] Cambio en estado de autenticación:", event);
             
             if (currentSession) {
               setSession(currentSession);
               setUser(currentSession.user);
               
-              // Log JWT token tras cambio de estado
-              console.log("[AUTH_DEBUG] Evento de autenticación:", event);
-              console.log("[AUTH_DEBUG] Token JWT actualizado:", !!currentSession.access_token);
-              
-              // Obtener el rol directamente desde los metadatos del usuario o determinarlo
               const role = currentSession.user.user_metadata?.role || 
-                           determineRoleFromEmail(currentSession.user.email || '');
-              
-              // Si el rol no está en los metadatos, actualizarlo
-              if (!currentSession.user.user_metadata?.role) {
-                // Importante: Usar setTimeout para evitar problemas de recursión
-                setTimeout(() => {
-                  // Actualizar los metadatos del usuario con el rol
-                  supabase.auth.updateUser({
-                    data: { role: role }
-                  }).then(({ data, error }) => {
-                    if (error) {
-                      console.error("[AUTH_DEBUG] Error al actualizar metadatos del usuario:", error);
-                    } else if (data.user) {
-                      console.log("[AUTH_DEBUG] Metadatos de usuario actualizados con rol:", role);
-                      setUser(data.user);
-                    }
-                  });
-                }, 0);
-              }
+                          determineRoleFromEmail(currentSession.user.email || '');
               
               setUserRole(role);
               syncUserToLocalStorage(currentSession.user, currentSession);
+              console.log("[AUTH_DEBUG] Nuevo rol tras cambio de estado:", role);
             } else {
               setSession(null);
               setUser(null);
               setUserRole(null);
               localStorage.removeItem('user');
-              console.log("[AUTH_DEBUG] ⚠️ Sesión finalizada - No hay token JWT");
+              console.log("[AUTH_DEBUG] ⚠️ Sesión finalizada - Sin usuario");
             }
           }
         );
         
-        // Verificar si hay una sesión existente
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        
-        console.log("[AUTH_DEBUG] Verificación de sesión existente:", existingSession ? "Sesión encontrada" : "Sin sesión");
-        
-        if (existingSession) {
-          const createdAt = new Date().toLocaleString(); // Fallback para created_at
-          console.log("[AUTH_DEBUG] Token JWT inicial:", !!existingSession.access_token);
-          console.log("[AUTH_DEBUG] Datos de sesión:", {
-            userId: existingSession.user.id,
-            email: existingSession.user.email,
-            emitido: createdAt,
-            expira: new Date(existingSession.expires_at * 1000).toLocaleString(),
-            tiempoRestante: Math.round((existingSession.expires_at - Date.now()/1000)/60) + " minutos"
-          });
-          
-          setSession(existingSession);
-          setUser(existingSession.user);
-          
-          const role = existingSession.user.user_metadata?.role || 
-                       determineRoleFromEmail(existingSession.user.email || '');
-          
-          setUserRole(role);
-          syncUserToLocalStorage(existingSession.user, existingSession);
-        }
-        
+        // Es importante finalizar loading incluso si no hay sesión
         setAuthInitialized(true);
         setLoading(false);
+        console.log("[AUTH_DEBUG] Autenticación inicializada, loading:", false);
         
         return () => {
           subscription.unsubscribe();
         };
       } catch (error) {
         console.error("[AUTH_DEBUG] Error crítico durante inicialización de autenticación:", error);
+        // Asegurarse de que loading sea false incluso con errores
         setLoading(false);
         setAuthInitialized(true);
       }

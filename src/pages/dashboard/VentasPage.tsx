@@ -8,7 +8,6 @@ import { HistorialSemanal } from '@/components/ventas/HistorialSemanal';
 import { VentasResumenAgregado } from '@/components/ventas/VentasResumenAgregado';
 import { DateRangeSelector } from '@/components/ventas/DateRangeSelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
@@ -40,6 +39,10 @@ export interface VentaDetalle {
 }
 
 const VentasPage = () => {
+  console.log("[VENTAS_DEBUG] Inicializando VentasPage");
+  const { user: authUser, userRole, loading: authLoading, session } = useAuth();
+  console.log("[VENTAS_DEBUG] Estado de autenticación:", { authLoading, userRole, hasUser: !!authUser, hasSession: !!session });
+  
   const [user, setUser] = useState<{
     role: string;
     email: string;
@@ -77,16 +80,36 @@ const VentasPage = () => {
 
   // Efecto para cargar el usuario y configurar la interfaz inicial
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setIsAdmin(parsedUser.role === 'admin' || parsedUser.email?.includes('sergio.t@topmarket.com.mx'));
+    console.log("[VENTAS_DEBUG] useEffect para cargar usuario");
+    
+    // Usar el usuario de AuthContext si está disponible
+    if (authUser && !authLoading) {
+      const userData = {
+        role: userRole || 'user',
+        email: authUser.email || ''
+      };
+      console.log("[VENTAS_DEBUG] Estableciendo usuario desde AuthContext:", userData);
+      setUser(userData);
+      
+      // Verificar si es admin
+      setIsAdmin(userData.role === 'admin' || userData.email?.includes('sergio.t@topmarket.com.mx'));
+    } 
+    // Fallback al localStorage si no hay usuario en AuthContext
+    else {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        console.log("[VENTAS_DEBUG] Estableciendo usuario desde localStorage:", parsedUser);
+        setUser(parsedUser);
+        setIsAdmin(parsedUser.role === 'admin' || parsedUser.email?.includes('sergio.t@topmarket.com.mx'));
+      } else {
+        console.log("[VENTAS_DEBUG] ⚠️ No se encontró usuario en localStorage ni en AuthContext");
+      }
     }
     
     loadHistorialSemanas();
     cargarDatosSemanaActual();
-  }, []);
+  }, [authUser, authLoading, userRole]);
 
   // Efecto para filtrar datos cuando cambia el rango de fechas
   useEffect(() => {
@@ -519,8 +542,35 @@ const VentasPage = () => {
     setDateRange(range);
   };
 
+  if (authLoading) {
+    console.log("[VENTAS_DEBUG] Mostrando pantalla de carga debido a authLoading:", authLoading);
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
+          <p className="text-lg mb-4">Cargando datos de ventas...</p>
+          <p className="text-sm text-muted-foreground">Estado de autenticación: {authLoading ? "Cargando..." : "Listo"}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
-    return <div>Cargando...</div>;
+    console.log("[VENTAS_DEBUG] No hay usuario establecido después de cargar");
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
+          <p className="text-lg mb-4">No se pudo cargar la información de usuario</p>
+          <Button 
+            onClick={() => window.location.href = '/'} 
+            className="mt-4"
+          >
+            Volver al inicio
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
