@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
-import { supabase } from '@/integrations/supabase/client';
 import Index from './pages/Index';
 import UserLoginPage from './pages/auth/UserLoginPage';
 import AdminPage from './pages/dashboard/AdminPage';
@@ -18,8 +17,6 @@ import ReclutamientoPage from './pages/dashboard/ReclutamientoPage';
 import { useAuth } from '@/hooks/use-auth';
 
 function App() {
-  const [loading, setLoading] = useState(true);
-
   // Function to determine where to redirect based on user role
   const getRedirectPath = (userRole: string | null, userEmail: string | null) => {
     if (!userRole || !userEmail) return null;
@@ -46,9 +43,9 @@ function App() {
   };
 
   const AppRoutes = () => {
-    const { user, userRole, loading: authLoading } = useAuth();
+    const { user, userRole, loading } = useAuth();
     
-    if (authLoading) {
+    if (loading) {
       return <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">TopMarket</h1>

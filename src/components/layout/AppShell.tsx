@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -15,7 +15,7 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ children, user: propUser }: AppShellProps) => {
-  const { user: authUser, userRole, session, signOut } = useAuth();
+  const { user: authUser, userRole, session, signOut, isSessionValid, validateSession } = useAuth();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
   const { toast } = useToast();
@@ -23,56 +23,20 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
   const location = useLocation();
   const isAuthPage = location.pathname === '/' || location.pathname.startsWith('/login');
   
-  // Validar sesión JWT cada vez que AppShell se renderiza
+  // Usar el hook centralizado para validar sesión
   useEffect(() => {
-    const validateJwtSession = async () => {
-      // Solo ejecutar validación si no estamos en una página de autenticación
+    const checkSession = async () => {
+      // Solo validar si no estamos en una página de autenticación
       if (isAuthPage) {
-        console.log("[AUTH_DEBUG] Estamos en página de autenticación, omitiendo validación de sesión");
+        console.log("[AUTH_DEBUG] Estamos en página de autenticación, omitiendo validación");
         return;
       }
       
-      // Verificación estricta de sesión JWT
-      if (session) {
-        const tokenExpiration = session.expires_at * 1000;
-        const timeRemaining = Math.round((tokenExpiration - Date.now())/60000);
-        
-        console.log("[AUTH_DEBUG] AppShell: Sesión JWT disponible", {
-          userId: session.user.id,
-          tokenActivo: !!session.access_token,
-          expira: new Date(tokenExpiration).toLocaleString(),
-          tiempoRestante: timeRemaining + " minutos",
-          fuente: session.access_token.startsWith("ey") ? "Supabase JWT" : "Token inválido"
-        });
-        
-        // Validar token JWT
-        if (!session.access_token || !session.access_token.startsWith("ey")) {
-          console.log("[AUTH_DEBUG] AppShell: ⚠️ Token JWT inválido detectado - Cerrando sesión");
-          await signOut();
-          toast({
-            title: "Error de autenticación",
-            description: "Tu token de sesión es inválido. Por favor inicia sesión de nuevo.",
-            variant: "destructive"
-          });
-          
-          // Usar setTimeout para evitar problemas con actualización de estado durante render
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 0);
-          return;
-        }
-        
-        // Advertir si el token está por expirar (menos de 10 minutos)
-        if (timeRemaining < 10) {
-          console.log("[AUTH_DEBUG] AppShell: ⚠️ Token JWT a punto de expirar");
-          toast({
-            title: "Sesión por expirar",
-            description: `Tu sesión expirará en ${timeRemaining} minutos. Considera cerrar sesión y volver a iniciar para renovar tu token.`,
-            variant: "default"
-          });
-        }
-      } else {
-        console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión JWT activa");
+      // Utilizamos la función centralizada de validación
+      const isValid = await validateSession();
+      
+      if (!isValid) {
+        console.log("[AUTH_DEBUG] AppShell: Sesión inválida, redirigiendo al inicio");
         
         // Redirigir solo si no estamos ya en la página principal o login
         if (!isAuthPage) {
@@ -82,28 +46,18 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
             variant: "destructive"
           });
           
+          await signOut();
+          
           // Usar setTimeout para evitar problemas con actualización de estado durante render
           setTimeout(() => {
             navigate('/', { replace: true });
           }, 0);
-          return;
         }
-      }
-      
-      // Log del estado de usuario
-      if (authUser) {
-        console.log("[AUTH_DEBUG] AppShell: Usuario autenticado:", {
-          id: authUser.id,
-          email: authUser.email,
-          role: userRole || 'sin_rol'
-        });
-      } else {
-        console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay usuario autenticado");
       }
     };
     
-    validateJwtSession();
-  }, [session, authUser, userRole, navigate, toast, signOut, isAuthPage]);
+    checkSession();
+  }, [isAuthPage, validateSession, navigate, toast, signOut]);
   
   // Cargar usuario desde context 
   useEffect(() => {
@@ -151,20 +105,14 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
     }
   };
 
-  // Verificar si el usuario está disponible o tiene una sesión JWT válida
-  if ((!user && !authUser) || !session?.access_token) {
-    // Solo mostrar pantalla de carga si no estamos en una página de autenticación
-    if (!isAuthPage) {
-      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay usuario disponible o sesión JWT válida, mostrando pantalla de carga");
-      return <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="mb-4 text-lg font-medium">Verificando sesión...</div>
-          <div className="text-sm text-muted-foreground">
-            Si no eres redirigido automáticamente, haz clic <a href="/" className="text-blue-500 hover:underline">aquí</a> para volver al inicio.
-          </div>
-        </div>
-      </div>;
-    }
+  // Solo mostramos pantalla de carga en el caso extremo de no tener usuario y no estar en auth
+  if (!isAuthPage && !user && !authUser) {
+    return <div className="flex justify-center items-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
+        <p className="text-lg mb-4">Redirigiendo...</p>
+      </div>
+    </div>;
   }
 
   return (

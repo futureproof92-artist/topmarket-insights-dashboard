@@ -9,11 +9,13 @@ type AuthContextType = {
   user: User | null;
   loading: boolean;
   userRole: string | null;
+  isSessionValid: boolean;
   signIn: (email: string, password: string) => Promise<{
     error: any | null;
     data: Session | null;
   }>;
   signOut: () => Promise<void>;
+  validateSession: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [isSessionValid, setIsSessionValid] = useState(false);
   const { toast } = useToast();
 
   // Determinar role basado en el email
@@ -79,6 +82,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Nueva función centralizada para validar sesiones JWT
+  const validateSession = async (): Promise<boolean> => {
+    console.log("[AUTH_DEBUG] Iniciando validación centralizada de sesión JWT");
+    
+    if (!session || !user) {
+      console.log("[AUTH_DEBUG] No hay sesión o usuario para validar");
+      setIsSessionValid(false);
+      return false;
+    }
+    
+    // Verificamos que el token sea válido
+    if (!session.access_token || !session.access_token.startsWith("ey")) {
+      console.log("[AUTH_DEBUG] ⚠️ Token JWT inválido detectado");
+      setIsSessionValid(false);
+      return false;
+    }
+    
+    // Verificamos si el token ha expirado
+    const tokenExpiration = session.expires_at * 1000;
+    const timeRemaining = Math.round((tokenExpiration - Date.now())/60000);
+    
+    console.log("[AUTH_DEBUG] Validación de sesión JWT:", {
+      userId: user.id,
+      tokenActivo: !!session.access_token,
+      expira: new Date(tokenExpiration).toLocaleString(),
+      tiempoRestante: timeRemaining + " minutos",
+    });
+    
+    if (Date.now() >= tokenExpiration) {
+      console.log("[AUTH_DEBUG] ⚠️ Token JWT expirado");
+      setIsSessionValid(false);
+      return false;
+    }
+    
+    // Si estamos a menos de 10 minutos de expirar, advertimos pero aún es válido
+    if (timeRemaining < 10) {
+      console.log("[AUTH_DEBUG] ⚠️ Token JWT a punto de expirar");
+      // La sesión sigue siendo válida, solo advertimos
+    }
+    
+    setIsSessionValid(true);
+    return true;
+  };
+
   useEffect(() => {
     // Configuración inicial para resolver la sesión
     const setupAuth = async () => {
@@ -99,11 +146,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserRole(role);
           syncUserToLocalStorage(existingSession.user, existingSession);
           console.log("[AUTH_DEBUG] Rol establecido:", role);
+          
+          // Validamos la sesión inmediatamente
+          await validateSession();
         }
         
         // Establece el listener para cambios de autenticación
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          (event, currentSession) => {
+          async (event, currentSession) => {
             console.log("[AUTH_DEBUG] Cambio en estado de autenticación:", event);
             
             if (currentSession) {
@@ -116,10 +166,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setUserRole(role);
               syncUserToLocalStorage(currentSession.user, currentSession);
               console.log("[AUTH_DEBUG] Nuevo rol tras cambio de estado:", role);
+              
+              // Validamos la sesión automáticamente tras cada cambio
+              await validateSession();
             } else {
               setSession(null);
               setUser(null);
               setUserRole(null);
+              setIsSessionValid(false);
               localStorage.removeItem('user');
               console.log("[AUTH_DEBUG] ⚠️ Sesión finalizada - Sin usuario");
             }
@@ -139,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Asegurarse de que loading sea false incluso con errores
         setLoading(false);
         setAuthInitialized(true);
+        setIsSessionValid(false);
       }
     };
     
@@ -205,6 +260,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(userData));
       setUserRole(role);
       
+      // Validamos la nueva sesión
+      await validateSession();
+      
       toast({
         title: "Inicio de sesión exitoso",
         description: `Bienvenido, ${email}!`,
@@ -247,6 +305,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserRole(null);
       setUser(null);
       setSession(null);
+      setIsSessionValid(false);
       
       console.log("[AUTH_DEBUG] Sesión cerrada y almacenamiento local limpiado");
       
@@ -264,6 +323,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserRole(null);
       setUser(null);
       setSession(null);
+      setIsSessionValid(false);
       
       toast({
         title: "Error al cerrar sesión",
@@ -283,8 +343,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         loading: loading || !authInitialized,
         userRole,
+        isSessionValid,
         signIn,
         signOut,
+        validateSession,
       }}
     >
       {children}
