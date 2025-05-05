@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,6 +62,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     localStorage.setItem('user', JSON.stringify(userData));
     setUserRole(role);
+
+    // Log JWT token para diagnóstico
+    if (currentSession) {
+      console.log("[AUTH_DEBUG] Token JWT disponible:", !!currentSession.access_token);
+      console.log("[AUTH_DEBUG] Estado del token:", {
+        emitido: new Date(currentSession.created_at * 1000).toLocaleString(),
+        expira: new Date(currentSession.expires_at * 1000).toLocaleString(),
+        tiempoRestante: Math.round((currentSession.expires_at - Date.now()/1000)/60) + " minutos"
+      });
+    } else {
+      console.log("[AUTH_DEBUG] ⚠️ No hay token JWT disponible");
+    }
   };
 
   useEffect(() => {
@@ -86,11 +97,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Establece el listener para cambios de autenticación
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           (event, currentSession) => {
-            console.log("Auth state changed:", event, currentSession ? "Session present" : "No session");
+            console.log("[AUTH_DEBUG] Auth state changed:", event, currentSession ? "Session present" : "No session");
             
             if (currentSession) {
               setSession(currentSession);
               setUser(currentSession.user);
+              
+              // Log JWT token tras cambio de estado
+              console.log("[AUTH_DEBUG] Evento de autenticación:", event);
+              console.log("[AUTH_DEBUG] Token JWT actualizado:", !!currentSession.access_token);
               
               // Actualizar user_metadata con el rol si no existe
               const role = currentSession.user.user_metadata?.role || 
@@ -116,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setSession(null);
               setUser(null);
               setUserRole(null);
+              console.log("[AUTH_DEBUG] ⚠️ Sesión finalizada - No hay token JWT");
             }
           }
         );
@@ -123,9 +139,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Verificar si hay una sesión existente
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         
-        console.log("Existing session check:", existingSession ? "Found session" : "No session");
+        console.log("[AUTH_DEBUG] Verificación de sesión existente:", existingSession ? "Sesión encontrada" : "Sin sesión");
         
         if (existingSession) {
+          console.log("[AUTH_DEBUG] Token JWT inicial:", !!existingSession.access_token);
+          console.log("[AUTH_DEBUG] Datos de sesión:", {
+            userId: existingSession.user.id,
+            email: existingSession.user.email,
+            emitido: new Date(existingSession.created_at * 1000).toLocaleString(),
+            expira: new Date(existingSession.expires_at * 1000).toLocaleString(),
+            tiempoRestante: Math.round((existingSession.expires_at - Date.now()/1000)/60) + " minutos"
+          });
+          
           setSession(existingSession);
           setUser(existingSession.user);
           
@@ -135,8 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUserRole(role);
           syncUserToLocalStorage(existingSession.user, existingSession);
         } else if (storedUser) {
-          // Si hay un usuario en localStorage pero no hay sesión,
-          // intentamos recuperarla con credenciales almacenadas
+          console.log("[AUTH_DEBUG] ⚠️ Usuario en localStorage pero sin sesión activa");
+          // Intentar recuperar la sesión con credenciales almacenadas
           try {
             const parsedUser = JSON.parse(storedUser);
             console.log("Attempting to restore session for user:", parsedUser.email);
@@ -168,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           subscription.unsubscribe();
         };
       } catch (error) {
-        console.error("Error during auth initialization:", error);
+        console.error("[AUTH_DEBUG] Error crítico durante inicialización de autenticación:", error);
         setLoading(false);
       }
     };
@@ -177,7 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    console.log("Intentando iniciar sesión con:", email);
+    console.log("[AUTH_DEBUG] Intentando iniciar sesión con:", email);
     
     try {
       // Intentar autenticación con Supabase
@@ -187,7 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
-        console.error("Error de autenticación:", error.message);
+        console.error("[AUTH_DEBUG] Error de autenticación:", error.message);
         
         // Fallback para usuarios predeterminados si falla la autenticación
         const fallbackUsers = {
@@ -279,6 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (!data.session) {
+        console.log("[AUTH_DEBUG] ⚠️ Autenticación exitosa pero sin sesión generada");
         toast({
           title: "Error de autenticación",
           description: "No se pudo establecer sesión. Inténtalo de nuevo.",
@@ -290,6 +316,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: null
         };
       }
+      
+      console.log("[AUTH_DEBUG] ✅ Sesión establecida correctamente");
+      console.log("[AUTH_DEBUG] Token JWT:", !!data.session.access_token);
+      console.log("[AUTH_DEBUG] Duración de token:", Math.round((data.session.expires_at - Date.now()/1000)/60) + " minutos");
       
       // Determinar el rol del usuario
       const role = data.user.user_metadata?.role || determineRoleFromEmail(email);
@@ -318,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return { error: null, data: data.session };
     } catch (e) {
-      console.error("Error inesperado en signIn:", e);
+      console.error("[AUTH_DEBUG] Error crítico en signIn:", e);
       
       toast({
         title: "Error",
@@ -337,13 +367,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    console.log("Cerrando sesión");
+    console.log("[AUTH_DEBUG] Cerrando sesión - Eliminando token JWT");
     await supabase.auth.signOut();
     // También limpiamos localStorage para compatibilidad con el sistema anterior
     localStorage.removeItem('user');
     localStorage.removeItem('impersonatedRole');
     setUserRole(null);
-    console.log("Sesión cerrada y almacenamiento local limpiado");
+    console.log("[AUTH_DEBUG] Sesión cerrada y almacenamiento local limpiado");
   };
 
   return (

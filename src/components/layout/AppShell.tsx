@@ -14,10 +14,24 @@ interface AppShellProps {
 }
 
 export const AppShell = ({ children, user: propUser }: AppShellProps) => {
-  const { user: authUser, userRole } = useAuth();
+  const { user: authUser, userRole, session } = useAuth();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [impersonatedRole, setImpersonatedRole] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Log de estado de sesión cada vez que AppShell se renderiza
+  useEffect(() => {
+    if (session) {
+      console.log("[AUTH_DEBUG] AppShell: Sesión disponible", {
+        userId: session.user.id,
+        tokenActivo: !!session.access_token,
+        expira: new Date(session.expires_at * 1000).toLocaleString(),
+        tiempoRestante: Math.round((session.expires_at - Date.now()/1000)/60) + " minutos"
+      });
+    } else {
+      console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión activa");
+    }
+  }, [session]);
   
   // Cargar usuario desde context o localStorage
   useEffect(() => {
@@ -28,7 +42,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
       
       const userData = { email, role };
       setUser(userData);
-      console.log("Usuario establecido desde authUser:", userData);
+      console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde authUser:", userData);
     } 
     // Si no hay usuario en el contexto, intentamos cargar desde localStorage
     else {
@@ -37,11 +51,11 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
       if (savedUser) {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
-        console.log("Usuario cargado desde localStorage:", parsedUser);
+        console.log("[AUTH_DEBUG] AppShell: Usuario cargado desde localStorage:", parsedUser);
       } else if (propUser) {
         // Si se pasa un usuario como prop, usarlo como respaldo
         setUser(propUser);
-        console.log("Usuario establecido desde props:", propUser);
+        console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde props:", propUser);
       }
     }
     
@@ -49,6 +63,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
     const savedRole = localStorage.getItem('impersonatedRole');
     if (savedRole) {
       setImpersonatedRole(savedRole);
+      console.log("[AUTH_DEBUG] AppShell: Modo de impersonación restaurado:", savedRole);
     }
   }, [authUser, propUser, userRole]);
 
@@ -58,12 +73,14 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
     
     if (role) {
       localStorage.setItem('impersonatedRole', role);
+      console.log("[AUTH_DEBUG] AppShell: Iniciando impersonación de rol:", role);
       toast({
         title: "Modo de edición",
         description: `Ahora estás viendo como ${role}`,
       });
     } else {
       localStorage.removeItem('impersonatedRole');
+      console.log("[AUTH_DEBUG] AppShell: Finalizando impersonación, volviendo a rol normal");
       toast({
         title: "Modo normal",
         description: "Has vuelto a tu vista normal",
@@ -73,7 +90,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
 
   // Verificar si el usuario está disponible
   if (!user && !authUser) {
-    console.log("No hay usuario disponible, mostrando pantalla de carga");
+    console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay usuario disponible, mostrando pantalla de carga");
     return <div className="flex justify-center items-center min-h-screen">Cargando...</div>;
   }
 
