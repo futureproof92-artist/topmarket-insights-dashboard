@@ -9,16 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
-// Define a simple error interface with only the properties we need
-interface SupabaseErrorObject {
+// Simple error type without complex nesting
+type SimpleError = {
   message?: string;
   details?: string;
-  code?: string;
-  hint?: string;
-}
-
-// Use a simple type for tracking errors
-type SupabaseError = SupabaseErrorObject | null;
+};
 
 interface DeleteDataButtonProps {
   tableName: ValidTableName;
@@ -59,8 +54,7 @@ export const DeleteDataButton = ({
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
       }
 
-      // Initialize with explicit null value
-      let error: SupabaseError = null;
+      let errorMessage: string | null = null;
 
       if (deleteAllData && semana) {
         // Eliminar todos los datos de una semana específica
@@ -75,14 +69,8 @@ export const DeleteDataButton = ({
           
           if (ventasError) {
             console.error("[DELETE_DEBUG] Error al eliminar detalles de ventas:", ventasError);
-            // Cast to our simplified error type rather than using complex inference
-            error = { 
-              message: ventasError.message,
-              details: (ventasError as any).details,
-              code: (ventasError as any).code,
-              hint: (ventasError as any).hint
-            };
-            throw error;
+            errorMessage = ventasError.message;
+            throw new Error(errorMessage);
           }
           
           // Luego eliminamos el registro del historial
@@ -91,14 +79,8 @@ export const DeleteDataButton = ({
             .delete()
             .eq('id', semanaId);
           
-          // Cast to our simplified error type  
           if (historialError) {
-            error = { 
-              message: historialError.message,
-              details: (historialError as any).details,
-              code: (historialError as any).code,
-              hint: (historialError as any).hint
-            };
+            errorMessage = historialError.message;
           }
         } else {
           // Para otras tablas, eliminamos por semana
@@ -107,14 +89,8 @@ export const DeleteDataButton = ({
             .delete()
             .eq('semana', semana);
           
-          // Cast to our simplified error type
           if (deleteError) {
-            error = { 
-              message: deleteError.message,
-              details: (deleteError as any).details,
-              code: (deleteError as any).code,
-              hint: (deleteError as any).hint
-            };
+            errorMessage = deleteError.message;
           }
         }
       } else if (recordId) {
@@ -126,22 +102,16 @@ export const DeleteDataButton = ({
           .delete()
           .eq('id', recordId);
         
-        // Cast to our simplified error type
         if (deleteError) {
-          error = { 
-            message: deleteError.message,
-            details: (deleteError as any).details,
-            code: (deleteError as any).code,
-            hint: (deleteError as any).hint
-          };
+          errorMessage = deleteError.message;
         }
       } else {
         throw new Error("No se proporcionó un ID de registro o información de semana para eliminar.");
       }
 
-      if (error) {
-        console.error("[DELETE_DEBUG] Error al eliminar datos:", error);
-        throw error;
+      if (errorMessage) {
+        console.error("[DELETE_DEBUG] Error al eliminar datos:", errorMessage);
+        throw new Error(errorMessage);
       }
 
       toast({
@@ -161,15 +131,6 @@ export const DeleteDataButton = ({
       
       if (error instanceof Error) {
         errorMessage += `: ${error.message}`;
-      } else if (typeof error === 'object' && error !== null) {
-        // Use a simple cast to our defined error type
-        const supabaseError = error as SupabaseErrorObject;
-        if (supabaseError.message) {
-          errorMessage += `: ${supabaseError.message}`;
-        }
-        if (supabaseError.details) {
-          errorMessage += ` (${supabaseError.details})`;
-        }
       }
       
       toast({
