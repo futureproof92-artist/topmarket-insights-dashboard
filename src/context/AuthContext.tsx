@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -65,9 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Log JWT token para diagnóstico
     if (currentSession) {
+      const createdAt = new Date().toLocaleString(); // Fallback para created_at
       console.log("[AUTH_DEBUG] Token JWT disponible:", !!currentSession.access_token);
       console.log("[AUTH_DEBUG] Estado del token:", {
-        emitido: new Date(currentSession.created_at * 1000).toLocaleString(),
+        emitido: createdAt,
         expira: new Date(currentSession.expires_at * 1000).toLocaleString(),
         tiempoRestante: Math.round((currentSession.expires_at - Date.now()/1000)/60) + " minutos"
       });
@@ -142,11 +144,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log("[AUTH_DEBUG] Verificación de sesión existente:", existingSession ? "Sesión encontrada" : "Sin sesión");
         
         if (existingSession) {
+          const createdAt = new Date().toLocaleString(); // Fallback para created_at
           console.log("[AUTH_DEBUG] Token JWT inicial:", !!existingSession.access_token);
           console.log("[AUTH_DEBUG] Datos de sesión:", {
             userId: existingSession.user.id,
             email: existingSession.user.email,
-            emitido: new Date(existingSession.created_at * 1000).toLocaleString(),
+            emitido: createdAt,
             expira: new Date(existingSession.expires_at * 1000).toLocaleString(),
             tiempoRestante: Math.round((existingSession.expires_at - Date.now()/1000)/60) + " minutos"
           });
