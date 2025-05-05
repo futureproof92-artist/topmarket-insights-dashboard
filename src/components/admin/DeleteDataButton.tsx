@@ -9,6 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
+// Define specific error type to prevent deep instantiation
+type SupabaseError = {
+  message?: string;
+  details?: string;
+} | null;
+
 interface DeleteDataButtonProps {
   tableName: ValidTableName;
   recordId?: string;
@@ -48,7 +54,8 @@ export const DeleteDataButton = ({
         throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
       }
 
-      let error = null;
+      // Explicitly type the error to prevent deep instantiation
+      let error: SupabaseError = null;
 
       if (deleteAllData && semana) {
         // Eliminar todos los datos de una semana específica
