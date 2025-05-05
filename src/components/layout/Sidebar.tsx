@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -117,8 +118,16 @@ export const Sidebar = ({
   };
   
   const handleLogout = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+      // Asegurar redirección forzada a la página de inicio
+      console.log("[AUTH_DEBUG] Redirigiendo a página principal después de cerrar sesión");
+      navigate('/', { replace: true });
+    } catch (error) {
+      console.error("[AUTH_DEBUG] Error al cerrar sesión:", error);
+      // Intentar redirección incluso si hay un error
+      navigate('/', { replace: true });
+    }
   };
 
   return <aside className="w-full md:w-64 bg-sidebar border-r border-border">

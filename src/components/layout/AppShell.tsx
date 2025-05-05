@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -45,7 +46,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
             description: "Tu token de sesión es inválido. Por favor inicia sesión de nuevo.",
             variant: "destructive"
           });
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
         
@@ -67,7 +68,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
             description: "No se encontró una sesión activa. Por favor inicia sesión.",
             variant: "destructive"
           });
-          navigate('/');
+          navigate('/', { replace: true });
           return;
         }
       }
