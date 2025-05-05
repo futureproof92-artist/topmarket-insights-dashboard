@@ -98,22 +98,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log("[AUTH_DEBUG] Evento de autenticación:", event);
               console.log("[AUTH_DEBUG] Token JWT actualizado:", !!currentSession.access_token);
               
-              // Actualizar user_metadata con el rol si no existe
+              // Obtener el rol directamente desde los metadatos del usuario o determinarlo
               const role = currentSession.user.user_metadata?.role || 
                            determineRoleFromEmail(currentSession.user.email || '');
               
+              // Si el rol no está en los metadatos, actualizarlo
               if (!currentSession.user.user_metadata?.role) {
-                // Actualizar los metadatos del usuario con el rol
-                supabase.auth.updateUser({
-                  data: { role: role }
-                }).then(({ data, error }) => {
-                  if (error) {
-                    console.error("[AUTH_DEBUG] Error al actualizar metadatos del usuario:", error);
-                  } else if (data.user) {
-                    console.log("[AUTH_DEBUG] Metadatos de usuario actualizados con rol:", role);
-                    setUser(data.user);
-                  }
-                });
+                // Importante: Usar setTimeout para evitar problemas de recursión
+                setTimeout(() => {
+                  // Actualizar los metadatos del usuario con el rol
+                  supabase.auth.updateUser({
+                    data: { role: role }
+                  }).then(({ data, error }) => {
+                    if (error) {
+                      console.error("[AUTH_DEBUG] Error al actualizar metadatos del usuario:", error);
+                    } else if (data.user) {
+                      console.log("[AUTH_DEBUG] Metadatos de usuario actualizados con rol:", role);
+                      setUser(data.user);
+                    }
+                  });
+                }, 0);
               }
               
               setUserRole(role);
@@ -209,18 +213,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log("[AUTH_DEBUG] ✅ Sesión establecida correctamente");
-      console.log("[AUTH_DEBUG] Token JWT:", !!data.session.access_token);
-      console.log("[AUTH_DEBUG] Duración de token:", Math.round((data.session.expires_at - Date.now()/1000)/60) + " minutos");
       
       // Determinar el rol del usuario
       const role = data.user.user_metadata?.role || determineRoleFromEmail(email);
       
-      // Actualizar metadata si es necesario
-      if (!data.user.user_metadata?.role) {
-        await supabase.auth.updateUser({
-          data: { role }
-        });
-      }
+      // Actualizar metadata del usuario con el rol (importante para JWT claims)
+      await supabase.auth.updateUser({
+        data: { role }
+      });
+      
+      console.log("[AUTH_DEBUG] Role actualizado en los metadatos del usuario:", role);
       
       // Guardar información en localStorage para compatibilidad
       const userData = {
