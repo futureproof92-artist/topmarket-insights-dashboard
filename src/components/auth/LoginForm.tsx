@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,7 +64,6 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
         toast({
           title: "Acceso seguro exitoso",
           description: `Bienvenido/a a TopMarket. Autenticación JWT verificada.`,
-          icon: <ShieldCheck className="h-5 w-5 text-green-500" />
         });
         onLogin(values.email, values.password);
       }
