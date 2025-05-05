@@ -6,8 +6,11 @@ import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+// Define valid table names as a type for type safety
+type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
+
 interface DeleteDataButtonProps {
-  tableName: string;
+  tableName: ValidTableName;
   recordId?: string;
   semanaId?: string;
   semana?: string;

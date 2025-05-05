@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from 'date-fns';
@@ -65,6 +66,17 @@ export const CobranzaKpiSemanal = () => {
   const formattedStartDate = format(startOfCurrentWeek, 'yyyy-MM-dd');
   const formattedEndDate = format(endOfCurrentWeek, 'yyyy-MM-dd');
   const weekKey = format(startOfCurrentWeek, 'yyyy-MM-dd');
+
+  // Handler para cuando se eliminan datos
+  const handleDataDeleted = () => {
+    // Volver a cargar los datos
+    fetchWeekData();
+    setWeeklyData(null);
+    setFormData({
+      cobrado_total: 0,
+      pagos_no_confirmados: 0
+    });
+  };
 
   // Cargar datos de la semana seleccionada
   const fetchWeekData = async () => {
