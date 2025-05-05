@@ -27,7 +27,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
         tokenActivo: !!session.access_token,
         expira: new Date(session.expires_at * 1000).toLocaleString(),
         tiempoRestante: Math.round((session.expires_at - Date.now()/1000)/60) + " minutos",
-        fuente: session.access_token.startsWith("ey") ? "Supabase" : "Fallback"
+        fuente: session.access_token.startsWith("ey") ? "Supabase" : "Desconocida"
       });
     } else {
       console.log("[AUTH_DEBUG] AppShell: ⚠️ No hay sesión activa de Supabase");
@@ -45,10 +45,10 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
     }
   }, [session, authUser, userRole]);
   
-  // Cargar usuario desde context o localStorage
+  // Cargar usuario desde context 
   useEffect(() => {
-    // Primero intentamos usar el usuario autenticado desde el contexto
-    if (authUser) {
+    // Usar el usuario autenticado desde el contexto
+    if (authUser && session) {
       const email = authUser.email || '';
       const role = userRole || 'user';
       
@@ -56,19 +56,10 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
       setUser(userData);
       console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde authUser:", userData);
     } 
-    // Si no hay usuario en el contexto, intentamos cargar desde localStorage
-    else {
-      const savedUser = localStorage.getItem('user');
-      
-      if (savedUser) {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        console.log("[AUTH_DEBUG] AppShell: Usuario cargado desde localStorage:", parsedUser);
-      } else if (propUser) {
-        // Si se pasa un usuario como prop, usarlo como respaldo
-        setUser(propUser);
-        console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde props:", propUser);
-      }
+    // Si no hay usuario en el contexto pero hay props, usarlos temporalmente
+    else if (propUser) {
+      setUser(propUser);
+      console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde props (temporal):", propUser);
     }
     
     // Restaurar el rol suplantado si existía
@@ -77,7 +68,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
       setImpersonatedRole(savedRole);
       console.log("[AUTH_DEBUG] AppShell: Modo de impersonación restaurado:", savedRole);
     }
-  }, [authUser, propUser, userRole]);
+  }, [authUser, propUser, userRole, session]);
 
   // Handle impersonation changes
   const handleImpersonate = (role: string | null) => {

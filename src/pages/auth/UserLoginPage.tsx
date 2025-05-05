@@ -4,9 +4,10 @@ import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const getUserInfo = (role: string) => {
   const userInfo = {
@@ -52,7 +53,7 @@ const UserLoginPage = () => {
     setLoginAttempts(0);
     
     // Si ya hay un usuario autenticado, redireccionar según su rol
-    if (user && (session || user.id?.toString().includes('fallback'))) {
+    if (user && session) {
       console.log("[AUTH_DEBUG] Usuario autenticado detectado:", user.email);
       
       const userRole = user.user_metadata?.role || 
@@ -107,22 +108,22 @@ const UserLoginPage = () => {
   const handleLogin = async (email: string, password: string) => {
     try {
       setLoginError(null);
-      const { error, data, source } = await signIn(email, password);
+      const { error, data } = await signIn(email, password);
       
       if (error || !data) {
-        console.error("[AUTH_DEBUG] Error durante el login:", error, "Fuente:", source);
+        console.error("[AUTH_DEBUG] Error durante el login:", error);
         setLoginAttempts(prev => prev + 1);
         
         // Mensaje personalizado según el número de intentos
         if (loginAttempts >= 2) {
-          setLoginError("Múltiples intentos fallidos. Verifica que estás usando las credenciales correctas para este perfil.");
+          setLoginError("Múltiples intentos fallidos. Este perfil de usuario debe ser creado en Supabase por un administrador.");
         } else {
           setLoginError(error?.message || "Error al iniciar sesión. Inténtalo de nuevo.");
         }
         return;
       }
       
-      console.log("[AUTH_DEBUG] Login exitoso en UserLoginPage:", email, role, "Fuente:", source);
+      console.log("[AUTH_DEBUG] Login exitoso en UserLoginPage:", email, role);
       
       // La redirección se manejará automáticamente en el useEffect
     } catch (error) {
@@ -160,7 +161,22 @@ const UserLoginPage = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Iniciar sesión - {userInfo.description}</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Iniciar sesión - {userInfo.description}</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle size={16} className="text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      Este sistema ahora usa autenticación con Supabase. Si no puedes acceder, 
+                      contacta al administrador para crear tu cuenta.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
             <CardDescription>
               Ingresa tus credenciales para acceder
             </CardDescription>

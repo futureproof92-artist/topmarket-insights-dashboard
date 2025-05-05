@@ -8,7 +8,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => void;
@@ -24,6 +25,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export const LoginForm = ({ onLogin }: LoginFormProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const { toast } = useToast();
   const { signIn } = useAuth();
   
@@ -37,42 +39,33 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
 
   const handleSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
+    setLoginError(null);
     console.log("[AUTH_DEBUG] Intentando acceder con:", values.email);
 
     try {
-      console.log("[AUTH_DEBUG] Iniciando proceso de autenticación");
-      const { error, data, source } = await signIn(values.email, values.password);
+      console.log("[AUTH_DEBUG] Iniciando proceso de autenticación con Supabase");
+      const { error, data } = await signIn(values.email, values.password);
       
       if (error) {
-        console.log("[AUTH_DEBUG] Error de autenticación:", error.message, "Fuente:", source);
-        toast({
-          title: "Error de acceso",
-          description: "Credenciales incorrectas. Por favor verifica tu correo y contraseña.",
-          variant: "destructive",
-        });
+        console.log("[AUTH_DEBUG] Error de autenticación:", error.message);
+        setLoginError(
+          "Credenciales incorrectas. Si es la primera vez que accedes, contacta al administrador para crear tu cuenta en Supabase."
+        );
       } else if (!data) {
         console.log("[AUTH_DEBUG] No hay error pero tampoco datos de sesión");
-        toast({
-          title: "Error de acceso",
-          description: "No se pudo iniciar sesión (sin datos de sesión)",
-          variant: "destructive",
-        });
+        setLoginError("No se pudo iniciar sesión (sin datos de sesión)");
       } else {
-        console.log("[AUTH_DEBUG] Autenticación exitosa a través de:", source);
+        console.log("[AUTH_DEBUG] Autenticación exitosa con Supabase");
         console.log("[AUTH_DEBUG] Datos de usuario:", data?.user?.email);
         toast({
           title: "Acceso exitoso",
-          description: `Bienvenido/a a TopMarket (via ${source})`,
+          description: `Bienvenido/a a TopMarket`,
         });
         onLogin(values.email, values.password);
       }
     } catch (error) {
       console.error("[AUTH_DEBUG] Error inesperado:", error);
-      toast({
-        title: "Error de acceso",
-        description: "Ha ocurrido un error inesperado. Por favor intenta más tarde.",
-        variant: "destructive",
-      });
+      setLoginError("Ha ocurrido un error inesperado. Por favor intenta más tarde.");
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +74,13 @@ export const LoginForm = ({ onLogin }: LoginFormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        {loginError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            <AlertDescription>{loginError}</AlertDescription>
+          </Alert>
+        )}
+        
         <FormField
           control={form.control}
           name="email"
