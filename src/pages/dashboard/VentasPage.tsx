@@ -76,7 +76,6 @@ const VentasPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
-  const { session } = useAuth();
 
   // Efecto para cargar el usuario y configurar la interfaz inicial
   useEffect(() => {
