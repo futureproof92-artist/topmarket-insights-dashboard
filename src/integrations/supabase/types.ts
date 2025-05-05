@@ -183,33 +183,6 @@ export type Database = {
         }
         Relationships: []
       }
-      usuarios_roles: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          nombre: string
-          role: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-          nombre: string
-          role: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          nombre?: string
-          role?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       ventas_detalle: {
         Row: {
           cliente: string
@@ -259,10 +232,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
-        Args: { user_email: string }
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
