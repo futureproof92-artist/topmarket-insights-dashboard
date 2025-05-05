@@ -68,7 +68,7 @@ export const DeleteDataButton = ({
           
           // Luego eliminamos el registro del historial
           const { error: historialError } = await supabase
-            .from(tableName)
+            .from('historial_semanal')
             .delete()
             .eq('id', semanaId);
             
