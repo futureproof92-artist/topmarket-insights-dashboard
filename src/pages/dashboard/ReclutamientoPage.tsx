@@ -19,7 +19,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { format as formatDate } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -53,7 +53,7 @@ const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
 
 // Función para crear una semana nueva
 const createWeekData = (dateOffset: number): WeeklyRecruitmentData => {
-  const weekStartDate = startOfWeek(subWeeks(CURRENT_DATE, dateOffset), { weekStartsOn: 1 });
+  const weekStartDate = startOfWeek(addWeeks(CURRENT_DATE, dateOffset), { weekStartsOn: 1 });
   const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
   
   return {
@@ -71,13 +71,12 @@ const generateWeeks = (numWeeks: number): WeeklyRecruitmentData[] => {
   
   // Generar semanas pasadas
   for (let i = numWeeks - 1; i >= 0; i--) {
-    weeks.push(createWeekData(i));
+    weeks.push(createWeekData(-i));
   }
   
   // Generar semanas futuras (próximas 4 semanas)
-  for (let i = -1; i >= -4; i--) {
-    const futureWeek = createWeekData(i);
-    weeks.unshift(futureWeek); // Agregar al inicio para mantener orden cronológico
+  for (let i = 1; i <= 4; i++) {
+    weeks.push(createWeekData(i)); 
   }
   
   return weeks;
@@ -87,8 +86,8 @@ const ReclutamientoPage = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(0); // Índice de la semana actual
   const [loading, setLoading] = useState(true);
-  const [selectedWeekId, setSelectedWeekId] = useState<string>('');
   const [currentWeekData, setCurrentWeekData] = useState<WeeklyRecruitmentData | null>(null);
   const [formData, setFormData] = useState({
     reclutamientos_confirmados: '',
@@ -124,7 +123,7 @@ const ReclutamientoPage = () => {
         const { data: existingData, error } = await supabase
           .from('reclutamiento')
           .select('*')
-          .order('semana_inicio', { ascending: false });
+          .order('semana_inicio', { ascending: true });
         
         if (error) {
           console.error('[RECLUTAMIENTO_DEBUG] Error fetching reclutamiento data:', error);
@@ -158,13 +157,12 @@ const ReclutamientoPage = () => {
                 .from('reclutamiento')
                 .insert({
                   semana: week.semana,
-                  semana_inicio: week.semana_inicio.toISOString().split('T')[0],
-                  semana_fin: week.semana_fin.toISOString().split('T')[0],
+                  semana_inicio: week.semana_inicio.toISOString(),
+                  semana_fin: week.semana_fin.toISOString(),
                   reclutamientos_confirmados: 0,
                   freelancers_confirmados: 0
                 })
-                .select('*')
-                .single();
+                .select('*');
               
               if (insertError) {
                 console.error(`[RECLUTAMIENTO_DEBUG] Error inserting week ${week.semana}:`, insertError);
@@ -180,7 +178,7 @@ const ReclutamientoPage = () => {
           const { data: updatedData } = await supabase
             .from('reclutamiento')
             .select('*')
-            .order('semana_inicio', { ascending: false });
+            .order('semana_inicio', { ascending: true });
             
           if (updatedData) {
             weeksList = updatedData.map(week => ({
@@ -195,11 +193,24 @@ const ReclutamientoPage = () => {
         
         // Establecer la semana actual como seleccionada por defecto
         if (weeksList.length > 0) {
-          setSelectedWeekId(weeksList[0].id || weeksList[0].semana);
-          setCurrentWeekData(weeksList[0]);
+          // Buscar el índice de la semana actual (la más cercana a la fecha actual)
+          const currentDate = new Date();
+          let closestIndex = 0;
+          let smallestDiff = Infinity;
+          
+          weeksList.forEach((week, index) => {
+            const diff = Math.abs(week.semana_inicio.getTime() - currentDate.getTime());
+            if (diff < smallestDiff) {
+              smallestDiff = diff;
+              closestIndex = index;
+            }
+          });
+          
+          setCurrentWeekIndex(closestIndex);
+          setCurrentWeekData(weeksList[closestIndex]);
           setFormData({
-            reclutamientos_confirmados: String(weeksList[0].reclutamientos_confirmados || 0),
-            freelancers_confirmados: String(weeksList[0].freelancers_confirmados || 0)
+            reclutamientos_confirmados: String(weeksList[closestIndex].reclutamientos_confirmados || 0),
+            freelancers_confirmados: String(weeksList[closestIndex].freelancers_confirmados || 0)
           });
         }
       } catch (error) {
@@ -219,15 +230,30 @@ const ReclutamientoPage = () => {
     }
   }, [toast, user]);
   
-  // Manejar cambio de semana seleccionada
-  const handleWeekChange = (weekId: string) => {
-    setSelectedWeekId(weekId);
-    const selected = weeksData.find(week => (week.id || week.semana) === weekId);
-    if (selected) {
-      setCurrentWeekData(selected);
+  // Navegar a la semana anterior
+  const goToPreviousWeek = () => {
+    if (currentWeekIndex > 0) {
+      const newIndex = currentWeekIndex - 1;
+      setCurrentWeekIndex(newIndex);
+      const selectedWeek = weeksData[newIndex];
+      setCurrentWeekData(selectedWeek);
       setFormData({
-        reclutamientos_confirmados: String(selected.reclutamientos_confirmados || 0),
-        freelancers_confirmados: String(selected.freelancers_confirmados || 0)
+        reclutamientos_confirmados: String(selectedWeek.reclutamientos_confirmados || 0),
+        freelancers_confirmados: String(selectedWeek.freelancers_confirmados || 0)
+      });
+    }
+  };
+  
+  // Navegar a la siguiente semana
+  const goToNextWeek = () => {
+    if (currentWeekIndex < weeksData.length - 1) {
+      const newIndex = currentWeekIndex + 1;
+      setCurrentWeekIndex(newIndex);
+      const selectedWeek = weeksData[newIndex];
+      setCurrentWeekData(selectedWeek);
+      setFormData({
+        reclutamientos_confirmados: String(selectedWeek.reclutamientos_confirmados || 0),
+        freelancers_confirmados: String(selectedWeek.freelancers_confirmados || 0)
       });
     }
   };
@@ -309,7 +335,7 @@ const ReclutamientoPage = () => {
       
       // Actualizar los datos locales
       const updatedWeeksData = weeksData.map(week => {
-        if ((week.id || week.semana) === selectedWeekId) {
+        if (week === currentWeekData) {
           return {
             ...week,
             reclutamientos_confirmados: reclutamientosValue,
@@ -370,27 +396,38 @@ const ReclutamientoPage = () => {
   return (
     <AppShell user={user}>
       <div className="space-y-6">
-        {/* Selector de semana - visible para todos */}
+        {/* Navegador de semanas con flechas */}
         <div className="mb-6">
-          <Label htmlFor="week-select" className="block text-sm font-medium mb-2">
-            Seleccionar Semana
-          </Label>
-          <Select 
-            value={selectedWeekId} 
-            onValueChange={handleWeekChange}
-            disabled={loading}
-          >
-            <SelectTrigger className="w-full md:w-[300px]">
-              <SelectValue placeholder="Seleccionar semana" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[300px]">
-              {weeksData.map(week => (
-                <SelectItem key={week.id || week.semana} value={week.id || week.semana}>
-                  Semana del {formatWeekLabel(week.semana_inicio, week.semana_fin)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={goToPreviousWeek} 
+              disabled={loading || currentWeekIndex <= 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            
+            <div className="text-center">
+              <h2 className="text-lg font-medium">
+                Semana del{' '}
+                {currentWeekData && (
+                  <span>
+                    {format(currentWeekData.semana_inicio, "'Lu' d 'de' MMM", { locale: es })} - {format(currentWeekData.semana_fin, "'Dom' d 'de' MMM yyyy", { locale: es })}
+                  </span>
+                )}
+              </h2>
+            </div>
+            
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={goToNextWeek} 
+              disabled={loading || currentWeekIndex >= weeksData.length - 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Formulario de edición - visible para Karla Casillas o administradores */}
