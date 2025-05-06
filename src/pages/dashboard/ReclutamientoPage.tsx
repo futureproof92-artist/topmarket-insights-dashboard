@@ -1,25 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, subWeeks, addWeeks, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AppShell } from '@/components/layout/AppShell';
-import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ChartContainer } from '@/components/dashboard/ChartContainer';
 import { KpiTable } from '@/components/dashboard/KpiTable';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
-import { format as formatDate } from 'date-fns';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -27,8 +16,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardContent,
-  CardFooter
+  CardContent
 } from "@/components/ui/card";
 
 // Interfaces para los datos
@@ -161,13 +149,10 @@ const ReclutamientoPage = () => {
                   semana_fin: week.semana_fin.toISOString(),
                   reclutamientos_confirmados: 0,
                   freelancers_confirmados: 0
-                })
-                .select('*');
+                });
               
               if (insertError) {
                 console.error(`[RECLUTAMIENTO_DEBUG] Error inserting week ${week.semana}:`, insertError);
-              } else if (data) {
-                console.log(`[RECLUTAMIENTO_DEBUG] Successfully inserted week ${week.semana}`);
               }
             } catch (insertError) {
               console.error(`[RECLUTAMIENTO_DEBUG] Exception inserting week ${week.semana}:`, insertError);
@@ -194,7 +179,7 @@ const ReclutamientoPage = () => {
         // Establecer la semana actual como seleccionada por defecto
         if (weeksList.length > 0) {
           // Buscar el índice de la semana actual (la más cercana a la fecha actual)
-          const currentDate = new Date();
+          const currentDate = CURRENT_DATE;
           let closestIndex = 0;
           let smallestDiff = Infinity;
           
@@ -292,34 +277,31 @@ const ReclutamientoPage = () => {
         freelancers: freelancersValue
       });
       
+      // Preparar el objeto de actualización
+      const updateData = {
+        reclutamientos_confirmados: reclutamientosValue,
+        freelancers_confirmados: freelancersValue,
+        updated_at: new Date().toISOString()
+      };
+      
       let result;
       
-      // Si el registro ya tiene un ID, utilizamos update
+      // Si tiene ID, actualizamos por ID
       if (currentWeekData.id) {
         result = await supabase
           .from('reclutamiento')
-          .update({
-            reclutamientos_confirmados: reclutamientosValue,
-            freelancers_confirmados: freelancersValue,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', currentWeekData.id)
-          .select('*');
+          .update(updateData)
+          .eq('id', currentWeekData.id);
       } 
-      // Si no tiene ID, pero tiene semana, actualizamos por semana
+      // Si no tiene ID pero tiene semana, actualizamos por semana
       else if (currentWeekData.semana) {
         result = await supabase
           .from('reclutamiento')
-          .update({
-            reclutamientos_confirmados: reclutamientosValue,
-            freelancers_confirmados: freelancersValue,
-            updated_at: new Date().toISOString()
-          })
-          .eq('semana', currentWeekData.semana)
-          .select('*');
+          .update(updateData)
+          .eq('semana', currentWeekData.semana);
       }
       
-      const { data, error } = result || { data: null, error: new Error("No se pudo actualizar") };
+      const { error } = result || { error: new Error("No se pudo actualizar") };
       
       if (error) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating reclutamiento data:', error);
@@ -331,11 +313,10 @@ const ReclutamientoPage = () => {
         return;
       }
       
-      console.log('[RECLUTAMIENTO_DEBUG] Datos actualizados:', data);
-      
       // Actualizar los datos locales
       const updatedWeeksData = weeksData.map(week => {
-        if (week === currentWeekData) {
+        if ((currentWeekData.id && week.id === currentWeekData.id) || 
+            (!currentWeekData.id && week.semana === currentWeekData.semana)) {
           return {
             ...week,
             reclutamientos_confirmados: reclutamientosValue,
@@ -346,27 +327,44 @@ const ReclutamientoPage = () => {
       });
       
       setWeeksData(updatedWeeksData);
-      
-      if (data && data.length > 0) {
-        const updatedItem = data[0];
-        setCurrentWeekData({
-          ...currentWeekData,
-          id: updatedItem.id, // Asegurarnos de que tenemos el ID correcto
-          reclutamientos_confirmados: updatedItem.reclutamientos_confirmados,
-          freelancers_confirmados: updatedItem.freelancers_confirmados
-        });
-      } else {
-        setCurrentWeekData({
-          ...currentWeekData,
-          reclutamientos_confirmados: reclutamientosValue,
-          freelancers_confirmados: freelancersValue
-        });
-      }
+      setCurrentWeekData({
+        ...currentWeekData,
+        reclutamientos_confirmados: reclutamientosValue,
+        freelancers_confirmados: freelancersValue
+      });
       
       toast({
         title: "Datos guardados",
         description: "La información se ha actualizado correctamente"
       });
+      
+      // Recargar los datos para asegurarnos de tener la información más actualizada
+      const { data: refreshedData, error: refreshError } = await supabase
+        .from('reclutamiento')
+        .select('*')
+        .order('semana_inicio', { ascending: true });
+      
+      if (!refreshError && refreshedData) {
+        const refreshedWeeks = refreshedData.map(week => ({
+          ...week,
+          semana_inicio: new Date(week.semana_inicio),
+          semana_fin: new Date(week.semana_fin)
+        }));
+        
+        setWeeksData(refreshedWeeks);
+        
+        // Encontrar el índice de la semana actual en los datos actualizados
+        const currentIndex = refreshedWeeks.findIndex(week => 
+          (currentWeekData.id && week.id === currentWeekData.id) || 
+          (!currentWeekData.id && week.semana === currentWeekData.semana)
+        );
+        
+        if (currentIndex >= 0) {
+          setCurrentWeekIndex(currentIndex);
+          setCurrentWeekData(refreshedWeeks[currentIndex]);
+        }
+      }
+      
     } catch (error) {
       console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
       toast({
