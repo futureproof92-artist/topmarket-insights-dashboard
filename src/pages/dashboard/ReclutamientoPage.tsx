@@ -279,7 +279,7 @@ const ReclutamientoPage = () => {
         </div>
 
         {/* Vista específica para Karla Casillas */}
-        {isKarlaCasillas && (
+        {(isKarlaCasillas || isAdmin) && (
           <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
             <h2 className="text-xl font-semibold">Registro de Reclutamientos</h2>
             <div className="space-y-4">
