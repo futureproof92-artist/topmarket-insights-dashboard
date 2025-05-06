@@ -17,7 +17,7 @@ interface DeleteDataButtonProps {
   onSuccess?: () => void;
   buttonText?: string;
   deleteAllData?: boolean;
-  buttonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link' | null;
+  buttonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
 export const DeleteDataButton = ({

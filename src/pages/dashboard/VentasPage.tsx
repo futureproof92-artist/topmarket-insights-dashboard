@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -31,6 +30,24 @@ interface LeadsData {
   leads_google_ads: number;
   contactos_frio_cl: number;
   contactos_frio_em: number;
+}
+
+// Define una interfaz para el tipo de registro que viene de Supabase
+interface HistorialSemanalRecord {
+  id: string;
+  semana: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  leads_pub_em: number;
+  leads_pub_cl: number;
+  leads_frio_em: number;
+  leads_frio_cl: number;
+  ventas_cerradas: number;
+  created_at: string;
+  updated_at: string;
+  leads_google_ads?: number;
+  contactos_frio_cl?: number;
+  contactos_frio_em?: number;
 }
 
 export interface VentaDetalle {
@@ -165,7 +182,7 @@ const VentasPage = () => {
       }
 
       // Para cada semana, obtener sus ventas detalle
-      const historialCompleto = await Promise.all(historialData.map(async semana => {
+      const historialCompleto = await Promise.all(historialData.map(async (semana: HistorialSemanalRecord) => {
         const {
           data: ventasData,
           error: ventasError
@@ -234,15 +251,16 @@ const VentasPage = () => {
       
       if (semanaExistente) {
         // Cargar los datos de la semana
+        const record = semanaExistente as HistorialSemanalRecord;
         setLeadsData({
-          leads_pub_em: semanaExistente.leads_pub_em || 0,
-          leads_pub_cl: semanaExistente.leads_pub_cl || 0,
-          leads_frio_em: semanaExistente.leads_frio_em || 0,
-          leads_frio_cl: semanaExistente.leads_frio_cl || 0,
-          ventas_cerradas: semanaExistente.ventas_cerradas || 0,
-          leads_google_ads: semanaExistente.leads_google_ads || 0,
-          contactos_frio_cl: semanaExistente.contactos_frio_cl || 0,
-          contactos_frio_em: semanaExistente.contactos_frio_em || 0
+          leads_pub_em: record.leads_pub_em || 0,
+          leads_pub_cl: record.leads_pub_cl || 0,
+          leads_frio_em: record.leads_frio_em || 0,
+          leads_frio_cl: record.leads_frio_cl || 0,
+          ventas_cerradas: record.ventas_cerradas || 0,
+          leads_google_ads: record.leads_google_ads || 0,
+          contactos_frio_cl: record.contactos_frio_cl || 0,
+          contactos_frio_em: record.contactos_frio_em || 0
         });
 
         // Cargar las ventas detalle
@@ -562,26 +580,12 @@ const VentasPage = () => {
   // Renderizado condicionado según la carga de autenticación
   if (authLoading) {
     console.log("[VENTAS_DEBUG] Mostrando pantalla de carga debido a authLoading:", authLoading);
-    return <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
-          <p className="text-lg mb-4">Cargando datos de ventas...</p>
-          <p className="text-sm text-muted-foreground">Estado de autenticación: {authLoading ? "Cargando..." : "Listo"}</p>
-        </div>
-      </div>;
+    return <div>Loading...</div>;
   }
   
   if (!user) {
     console.log("[VENTAS_DEBUG] No hay usuario establecido después de cargar");
-    return <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">TopMarket</h1>
-          <p className="text-lg mb-4">No se pudo cargar la información de usuario</p>
-          <Button onClick={() => window.location.href = '/'} className="mt-4">
-            Volver al inicio
-          </Button>
-        </div>
-      </div>;
+    return <div>No user found</div>;
   }
   
   return <AppShell user={user}>
