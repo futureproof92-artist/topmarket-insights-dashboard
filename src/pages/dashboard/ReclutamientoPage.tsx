@@ -18,6 +18,14 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter
+} from "@/components/ui/card";
 
 // Interfaces para los datos
 interface WeeklyRecruitmentData {
@@ -64,16 +72,23 @@ const ReclutamientoPage = () => {
     reclutamientos_confirmados: '',
     freelancers_confirmados: ''
   });
+  const [isSaving, setIsSaving] = useState(false);
   
   // Determinar si el usuario actual es Karla Casillas
-  const isKarlaCasillas = user?.email === 'karla.casillas@example.com';
+  const isKarlaCasillas = user?.email?.toLowerCase().includes('reclutamiento') || 
+                        user?.email?.toLowerCase().includes('karla.casillas');
   const isAdmin = user?.role === 'admin';
+  
+  // Determinar si el usuario puede editar
+  const canEdit = isKarlaCasillas || isAdmin;
   
   useEffect(() => {
     // Obtener el usuario del localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      console.log("[RECLUTAMIENTO_DEBUG] Usuario cargado:", parsedUser);
     }
   }, []);
   
@@ -81,6 +96,8 @@ const ReclutamientoPage = () => {
     const fetchReclutamientoData = async () => {
       setLoading(true);
       try {
+        console.log("[RECLUTAMIENTO_DEBUG] Cargando datos de reclutamiento");
+        
         // Obtener datos de reclutamiento desde Supabase
         const { data, error } = await supabase
           .from('reclutamiento')
@@ -88,7 +105,7 @@ const ReclutamientoPage = () => {
           .order('semana_inicio', { ascending: false });
         
         if (error) {
-          console.error('Error fetching reclutamiento data:', error);
+          console.error('[RECLUTAMIENTO_DEBUG] Error fetching reclutamiento data:', error);
           toast({
             title: "Error",
             description: "No se pudieron cargar los datos de reclutamiento",
@@ -101,12 +118,14 @@ const ReclutamientoPage = () => {
         
         // Si hay datos, convertir las fechas a objetos Date
         if (data && data.length > 0) {
+          console.log("[RECLUTAMIENTO_DEBUG] Datos encontrados:", data.length);
           weeksList = data.map(week => ({
             ...week,
             semana_inicio: new Date(week.semana_inicio),
             semana_fin: new Date(week.semana_fin)
           }));
         } else {
+          console.log("[RECLUTAMIENTO_DEBUG] No se encontraron datos, creando semanas predeterminadas");
           // Si no hay datos, crear algunas semanas predeterminadas
           for (let i = 0; i < 4; i++) {
             weeksList.push(createWeekData(i));
@@ -136,7 +155,7 @@ const ReclutamientoPage = () => {
           });
         }
       } catch (error) {
-        console.error('Error in fetchReclutamientoData:', error);
+        console.error('[RECLUTAMIENTO_DEBUG] Error in fetchReclutamientoData:', error);
         toast({
           title: "Error",
           description: "Ocurrió un error al cargar los datos",
@@ -147,8 +166,10 @@ const ReclutamientoPage = () => {
       }
     };
     
-    fetchReclutamientoData();
-  }, [toast]);
+    if (user) {
+      fetchReclutamientoData();
+    }
+  }, [toast, user]);
   
   // Manejar cambio de semana seleccionada
   const handleWeekChange = (weekId: string) => {
@@ -173,6 +194,8 @@ const ReclutamientoPage = () => {
   const handleSaveData = async () => {
     if (!currentWeekData) return;
     
+    setIsSaving(true);
+    
     // Validar entrada numérica 
     const reclutamientosValue = parseInt(formData.reclutamientos_confirmados);
     const freelancersValue = parseInt(formData.freelancers_confirmados);
@@ -183,10 +206,18 @@ const ReclutamientoPage = () => {
         description: "Los valores deben ser numéricos y no negativos",
         variant: "destructive"
       });
+      setIsSaving(false);
       return;
     }
     
     try {
+      console.log("[RECLUTAMIENTO_DEBUG] Guardando datos:", {
+        id: currentWeekData.id,
+        semana: currentWeekData.semana,
+        reclutamientos: reclutamientosValue,
+        freelancers: freelancersValue
+      });
+      
       // Actualizar en la base de datos
       const { error } = await supabase
         .from('reclutamiento')
@@ -199,7 +230,7 @@ const ReclutamientoPage = () => {
         .eq('semana', currentWeekData.semana);
       
       if (error) {
-        console.error('Error updating reclutamiento data:', error);
+        console.error('[RECLUTAMIENTO_DEBUG] Error updating reclutamiento data:', error);
         toast({
           title: "Error",
           description: "No se pudieron guardar los datos",
@@ -232,12 +263,14 @@ const ReclutamientoPage = () => {
         description: "La información se ha actualizado correctamente"
       });
     } catch (error) {
-      console.error('Error in handleSaveData:', error);
+      console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
       toast({
         title: "Error",
         description: "Ocurrió un error al guardar los datos",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -278,8 +311,8 @@ const ReclutamientoPage = () => {
           </Select>
         </div>
 
-        {/* Vista específica para Karla Casillas */}
-        {(isKarlaCasillas || isAdmin) && (
+        {/* Formulario de edición - solo visible para Karla Casillas o administradores */}
+        {canEdit && (
           <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
             <h2 className="text-xl font-semibold">Registro de Reclutamientos</h2>
             <div className="space-y-4">
@@ -295,7 +328,7 @@ const ReclutamientoPage = () => {
                   value={formData.reclutamientos_confirmados}
                   onChange={handleFormChange}
                   className="w-full md:w-[300px]"
-                  disabled={loading}
+                  disabled={loading || isSaving}
                 />
               </div>
               <div>
@@ -310,15 +343,15 @@ const ReclutamientoPage = () => {
                   value={formData.freelancers_confirmados}
                   onChange={handleFormChange}
                   className="w-full md:w-[300px]"
-                  disabled={loading}
+                  disabled={loading || isSaving}
                 />
               </div>
               <Button 
                 onClick={handleSaveData} 
                 className="mt-4"
-                disabled={loading}
+                disabled={loading || isSaving}
               >
-                Guardar
+                {isSaving ? 'Guardando...' : 'Guardar'}
               </Button>
             </div>
           </div>
@@ -326,17 +359,25 @@ const ReclutamientoPage = () => {
         
         {/* Tarjetas de KPI - visible para todos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <DashboardCard
-            title="Reclutamientos confirmados esta semana"
-            value={currentWeekData?.reclutamientos_confirmados || 0}
-            description="Reclutamientos confirmados en la semana"
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Reclutamientos confirmados esta semana</CardTitle>
+              <CardDescription>Reclutamientos confirmados en la semana</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold">{currentWeekData?.reclutamientos_confirmados || 0}</p>
+            </CardContent>
+          </Card>
           
-          <DashboardCard
-            title="Reclutamientos confirmados de freelancers esta semana"
-            value={currentWeekData?.freelancers_confirmados || 0}
-            description="Freelancers confirmados en la semana"
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Reclutamientos confirmados de freelancers esta semana</CardTitle>
+              <CardDescription>Freelancers confirmados en la semana</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-4xl font-bold">{currentWeekData?.freelancers_confirmados || 0}</p>
+            </CardContent>
+          </Card>
         </div>
         
         {/* Vista adicional para administradores */}
