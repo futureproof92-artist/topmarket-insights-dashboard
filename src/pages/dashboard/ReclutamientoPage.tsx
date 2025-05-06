@@ -74,7 +74,7 @@ const ReclutamientoPage = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
   const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0); // Índice de la semana actual
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [currentWeekData, setCurrentWeekData] = useState<WeeklyRecruitmentData | null>(null);
   const [formData, setFormData] = useState({
@@ -407,14 +407,12 @@ const ReclutamientoPage = () => {
             </Button>
             
             <div className="text-center">
-              <h2 className="text-lg font-medium">
-                Semana del{' '}
-                {currentWeekData && (
-                  <span>
-                    {format(currentWeekData.semana_inicio, "'Lu' d 'de' MMM", { locale: es })} - {format(currentWeekData.semana_fin, "'Dom' d 'de' MMM yyyy", { locale: es })}
-                  </span>
-                )}
-              </h2>
+              {currentWeekData && (
+                <h2 className="text-lg font-medium">
+                  Semana del{' '}
+                  {format(currentWeekData.semana_inicio, "d 'de' MMMM", { locale: es })} - {format(currentWeekData.semana_fin, "d 'de' MMMM yyyy", { locale: es })}
+                </h2>
+              )}
             </div>
             
             <Button 
