@@ -9,11 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 // Define valid table names as a type for type safety
 type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
 
-// Define una interfaz simple para errores
-interface SimpleError {
-  message: string;
-}
-
 interface DeleteDataButtonProps {
   tableName: ValidTableName;
   recordId?: string;
@@ -68,8 +63,7 @@ export const DeleteDataButton = ({
           
           if (ventasError) {
             console.error("[DELETE_DEBUG] Error al eliminar detalles de ventas:", ventasError);
-            // Usar aserción de tipo para simplificar la inferencia
-            errorMessage = (ventasError as SimpleError).message;
+            errorMessage = ventasError.message;
             throw new Error(errorMessage);
           }
           
@@ -80,8 +74,7 @@ export const DeleteDataButton = ({
             .eq('id', semanaId);
           
           if (historialError) {
-            // Usar aserción de tipo para simplificar la inferencia
-            errorMessage = (historialError as SimpleError).message;
+            errorMessage = historialError.message;
           }
         } else {
           // Para otras tablas, eliminamos por semana
@@ -91,8 +84,7 @@ export const DeleteDataButton = ({
             .eq('semana', semana);
           
           if (deleteError) {
-            // Usar aserción de tipo para simplificar la inferencia
-            errorMessage = (deleteError as SimpleError).message;
+            errorMessage = deleteError.message;
           }
         }
       } else if (recordId) {
@@ -105,8 +97,7 @@ export const DeleteDataButton = ({
           .eq('id', recordId);
         
         if (deleteError) {
-          // Usar aserción de tipo para simplificar la inferencia
-          errorMessage = (deleteError as SimpleError).message;
+            errorMessage = deleteError.message;
         }
       } else {
         throw new Error("No se proporcionó un ID de registro o información de semana para eliminar.");

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { addDays, startOfWeek, format, getDay, parse, eachWeekOfInterval } from 'date-fns';
@@ -14,11 +15,13 @@ import { DateRange } from 'react-day-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+
 interface WeekRange {
   startDate: Date;
   endDate: Date;
   displayText: string;
 }
+
 interface LeadsData {
   leads_pub_em: number;
   leads_pub_cl: number;
@@ -26,7 +29,10 @@ interface LeadsData {
   leads_frio_cl: number;
   ventas_cerradas: number;
   leads_google_ads: number;
+  contactos_frio_cl: number;
+  contactos_frio_em: number;
 }
+
 export interface VentaDetalle {
   id: string;
   cliente: string;
@@ -35,6 +41,7 @@ export interface VentaDetalle {
   costo_unitario: number;
   total_vacs: number;
 }
+
 const VentasPage = () => {
   console.log("[VENTAS_DEBUG] Inicializando VentasPage");
   const {
@@ -43,20 +50,24 @@ const VentasPage = () => {
     loading: authLoading,
     session
   } = useAuth();
+  
   console.log("[VENTAS_DEBUG] Estado de autenticación:", {
     authLoading,
     userRole,
     hasUser: !!authUser,
     hasSession: !!session
   });
+  
   const [user, setUser] = useState<{
     role: string;
     email: string;
   } | null>(null);
+  
   const [currentWeek, setCurrentWeek] = useState<WeekRange>(() => {
     const now = new Date();
     return getWeekRange(now);
   });
+  
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: startOfWeek(new Date(), {
       weekStartsOn: 1
@@ -65,27 +76,30 @@ const VentasPage = () => {
       weekStartsOn: 1
     }), 28)
   });
+  
   const [leadsData, setLeadsData] = useState<LeadsData>({
     leads_pub_em: 0,
     leads_pub_cl: 0,
     leads_frio_em: 0,
     leads_frio_cl: 0,
     ventas_cerradas: 0,
-    leads_google_ads: 0
+    leads_google_ads: 0,
+    contactos_frio_cl: 0,
+    contactos_frio_em: 0
   });
+  
   const [ventasDetalle, setVentasDetalle] = useState<VentaDetalle[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [historialSemanas, setHistorialSemanas] = useState<{
-    id: string; // Añadimos el ID para permitir la eliminación
+    id: string;
     semana: string;
     leads: LeadsData;
     ventasDetalle: VentaDetalle[];
   }[]>([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const {
-    toast
-  } = useToast();
+  const { toast } = useToast();
 
   // Efecto para cargar el usuario y configurar la interfaz inicial
   useEffect(() => {
@@ -138,10 +152,12 @@ const VentasPage = () => {
       } = await supabase.from('historial_semanal').select('*').order('fecha_inicio', {
         ascending: false
       });
+      
       if (historialError) {
         console.error("Error al cargar historial:", historialError);
         throw historialError;
       }
+      
       if (!historialData || historialData.length === 0) {
         setHistorialSemanas([]);
         setIsLoading(false);
@@ -154,6 +170,7 @@ const VentasPage = () => {
           data: ventasData,
           error: ventasError
         } = await supabase.from('ventas_detalle').select('*').eq('historial_id', semana.id);
+        
         if (ventasError) {
           console.error("Error al cargar ventas detalle:", ventasError);
           throw ventasError;
@@ -168,9 +185,9 @@ const VentasPage = () => {
           costo_unitario: Number(venta.costo_unitario),
           total_vacs: venta.total_vacs
         })) : [];
+        
         return {
           id: semana.id,
-          // Añadimos el ID para permitir la eliminación
           semana: semana.semana,
           leads: {
             leads_pub_em: semana.leads_pub_em || 0,
@@ -178,11 +195,14 @@ const VentasPage = () => {
             leads_frio_em: semana.leads_frio_em || 0,
             leads_frio_cl: semana.leads_frio_cl || 0,
             ventas_cerradas: semana.ventas_cerradas || 0,
-            leads_google_ads: semana.leads_google_ads || 0
+            leads_google_ads: semana.leads_google_ads || 0,
+            contactos_frio_cl: semana.contactos_frio_cl || 0,
+            contactos_frio_em: semana.contactos_frio_em || 0
           },
           ventasDetalle: ventasFormateadas
         };
       }));
+      
       setHistorialSemanas(historialCompleto);
     } catch (error) {
       console.error("Error al cargar el historial:", error);
@@ -206,10 +226,12 @@ const VentasPage = () => {
         data: semanaExistente,
         error: errorBusqueda
       } = await supabase.from('historial_semanal').select('*').eq('semana', currentWeek.displayText).maybeSingle();
+      
       if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
         console.error("Error al buscar semana existente:", errorBusqueda);
         throw errorBusqueda;
       }
+      
       if (semanaExistente) {
         // Cargar los datos de la semana
         setLeadsData({
@@ -218,7 +240,9 @@ const VentasPage = () => {
           leads_frio_em: semanaExistente.leads_frio_em || 0,
           leads_frio_cl: semanaExistente.leads_frio_cl || 0,
           ventas_cerradas: semanaExistente.ventas_cerradas || 0,
-          leads_google_ads: semanaExistente.leads_google_ads || 0
+          leads_google_ads: semanaExistente.leads_google_ads || 0,
+          contactos_frio_cl: semanaExistente.contactos_frio_cl || 0,
+          contactos_frio_em: semanaExistente.contactos_frio_em || 0
         });
 
         // Cargar las ventas detalle
@@ -226,10 +250,12 @@ const VentasPage = () => {
           data: ventasData,
           error: ventasError
         } = await supabase.from('ventas_detalle').select('*').eq('historial_id', semanaExistente.id);
+        
         if (ventasError) {
           console.error("Error al cargar ventas detalle:", ventasError);
           throw ventasError;
         }
+        
         if (ventasData && ventasData.length > 0) {
           // Convertir los tipos de servicio de string a los tipos específicos
           const ventasFormateadas: VentaDetalle[] = ventasData.map(venta => ({
@@ -257,7 +283,9 @@ const VentasPage = () => {
           leads_frio_em: 0,
           leads_frio_cl: 0,
           ventas_cerradas: 0,
-          leads_google_ads: 0
+          leads_google_ads: 0,
+          contactos_frio_cl: 0,
+          contactos_frio_em: 0
         });
         setVentasDetalle([]);
       }
@@ -271,6 +299,7 @@ const VentasPage = () => {
       });
     }
   };
+  
   function getWeekRange(date: Date): WeekRange {
     const startDate = startOfWeek(date, {
       weekStartsOn: 1
@@ -287,16 +316,19 @@ const VentasPage = () => {
       displayText
     };
   }
+  
   const prevWeek = () => {
     const prevWeekStart = addDays(currentWeek.startDate, -7);
     setCurrentWeek(getWeekRange(prevWeekStart));
     cargarDatosSemanaActual();
   };
+  
   const nextWeek = () => {
     const nextWeekStart = addDays(currentWeek.startDate, 7);
     setCurrentWeek(getWeekRange(nextWeekStart));
     cargarDatosSemanaActual();
   };
+  
   const updateVentasDetalleRows = (ventasCerradas: number) => {
     const currentLength = ventasDetalle.length;
     if (ventasCerradas > currentLength) {
@@ -315,10 +347,12 @@ const VentasPage = () => {
       setVentasDetalle(ventasDetalle.slice(0, ventasCerradas));
     }
   };
+  
   const handleLeadsChange = (newLeadsData: LeadsData) => {
     setLeadsData(newLeadsData);
     updateVentasDetalleRows(newLeadsData.ventas_cerradas);
   };
+  
   const handleVentaDetalleChange = (index: number, field: keyof VentaDetalle, value: any) => {
     const updatedVentas = [...ventasDetalle];
     updatedVentas[index] = {
@@ -327,6 +361,7 @@ const VentasPage = () => {
     };
     setVentasDetalle(updatedVentas);
   };
+  
   const handleSaveWeekData = async () => {
     try {
       setIsLoading(true);
@@ -342,6 +377,7 @@ const VentasPage = () => {
         data: existingSemana,
         error: searchError
       } = await supabase.from('historial_semanal').select('id').eq('semana', currentWeek.displayText).maybeSingle();
+      
       if (searchError) {
         console.error("Error al buscar semana existente:", searchError);
         throw searchError;
@@ -359,6 +395,7 @@ const VentasPage = () => {
         // Actualizar registro existente
         historial_id = existingSemana.id;
         console.log("Actualizando registro existente con ID:", historial_id);
+        
         const {
           error: updateError
         } = await supabase.from('historial_semanal').update({
@@ -368,8 +405,11 @@ const VentasPage = () => {
           leads_frio_cl: leadsData.leads_frio_cl,
           ventas_cerradas: leadsData.ventas_cerradas,
           leads_google_ads: leadsData.leads_google_ads,
+          contactos_frio_cl: leadsData.contactos_frio_cl,
+          contactos_frio_em: leadsData.contactos_frio_em,
           updated_at: new Date().toISOString()
         }).eq('id', historial_id);
+        
         if (updateError) {
           console.error("Error al actualizar historial:", updateError);
           console.log("Detalles del error:", JSON.stringify(updateError));
@@ -380,6 +420,7 @@ const VentasPage = () => {
       } else {
         // Crear nuevo registro
         console.log("Creando nuevo registro de historial semanal");
+        
         const insertData = {
           semana: currentWeek.displayText,
           fecha_inicio: currentWeek.startDate.toISOString(),
@@ -389,22 +430,29 @@ const VentasPage = () => {
           leads_frio_em: leadsData.leads_frio_em,
           leads_frio_cl: leadsData.leads_frio_cl,
           ventas_cerradas: leadsData.ventas_cerradas,
-          leads_google_ads: leadsData.leads_google_ads
+          leads_google_ads: leadsData.leads_google_ads,
+          contactos_frio_cl: leadsData.contactos_frio_cl,
+          contactos_frio_em: leadsData.contactos_frio_em
         };
+        
         console.log("Datos a insertar:", insertData);
+        
         const {
           data: newSemana,
           error: insertError
         } = await supabase.from('historial_semanal').insert(insertData).select('id').single();
+        
         if (insertError) {
           console.error("Error al insertar nuevo historial:", insertError);
           console.log("Detalles del error:", JSON.stringify(insertError));
           throw insertError;
         }
+        
         if (!newSemana) {
           console.error("No se recibió ID después de insertar");
           throw new Error("No se recibió ID después de insertar");
         }
+        
         console.log("Nuevo registro creado con ID:", newSemana.id);
         historial_id = newSemana.id;
       }
@@ -412,9 +460,11 @@ const VentasPage = () => {
       // Eliminar ventas detalle anteriores para esta semana
       if (ventasDetalle.length > 0) {
         console.log("Eliminando ventas detalle existentes para historial_id:", historial_id);
+        
         const {
           error: deleteError
         } = await supabase.from('ventas_detalle').delete().eq('historial_id', historial_id);
+        
         if (deleteError) {
           console.error("Error al eliminar ventas detalle:", deleteError);
           console.log("Detalles del error:", JSON.stringify(deleteError));
@@ -432,10 +482,13 @@ const VentasPage = () => {
           costo_unitario: venta.costo_unitario,
           total_vacs: venta.total_vacs
         }));
+        
         console.log("Guardando ventas detalle:", ventasParaGuardar);
+        
         const {
           error: insertVentasError
         } = await supabase.from('ventas_detalle').insert(ventasParaGuardar);
+        
         if (insertVentasError) {
           console.error("Error al insertar ventas detalle:", insertVentasError);
           console.log("Detalles del error:", JSON.stringify(insertVentasError));
@@ -501,9 +554,12 @@ const VentasPage = () => {
       setIsLoading(false);
     }
   };
+  
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
   };
+  
+  // Renderizado condicionado según la carga de autenticación
   if (authLoading) {
     console.log("[VENTAS_DEBUG] Mostrando pantalla de carga debido a authLoading:", authLoading);
     return <div className="flex justify-center items-center min-h-screen">
@@ -514,6 +570,7 @@ const VentasPage = () => {
         </div>
       </div>;
   }
+  
   if (!user) {
     console.log("[VENTAS_DEBUG] No hay usuario establecido después de cargar");
     return <div className="flex justify-center items-center min-h-screen">
@@ -526,6 +583,7 @@ const VentasPage = () => {
         </div>
       </div>;
   }
+  
   return <AppShell user={user}>
       <div className="space-y-6">
         {isAdmin ? <div className="space-y-6">
@@ -599,4 +657,5 @@ const VentasPage = () => {
       </div>
     </AppShell>;
 };
+
 export default VentasPage;

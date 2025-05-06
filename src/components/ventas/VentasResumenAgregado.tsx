@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,19 +15,22 @@ interface LeadsData {
   leads_frio_em: number;
   leads_frio_cl: number;
   ventas_cerradas: number;
+  leads_google_ads?: number;
+  contactos_frio_cl?: number;
+  contactos_frio_em?: number;
 }
 
 interface HistorialItem {
   semana: string;
   leads: LeadsData;
   ventasDetalle: VentaDetalle[];
-  id?: string; // Añadido para facilitar la eliminación
+  id?: string;
 }
 
 interface VentasResumenAgregadoProps {
   historial: HistorialItem[];
-  dateRange?: DateRange; // Updated to use DateRange from react-day-picker
-  onDataChange?: () => void; // Callback para notificar cambios
+  dateRange?: DateRange;
+  onDataChange?: () => void;
 }
 
 export const VentasResumenAgregado = ({
@@ -112,7 +116,10 @@ export const VentasResumenAgregado = ({
       leads_pub_cl: 0,
       leads_frio_em: 0,
       leads_frio_cl: 0,
-      ventas_cerradas: 0
+      ventas_cerradas: 0,
+      leads_google_ads: 0,
+      contactos_frio_cl: 0,
+      contactos_frio_em: 0
     };
 
     // Acumular todas las ventas
@@ -136,6 +143,9 @@ export const VentasResumenAgregado = ({
       totalLeads.leads_frio_em += item.leads.leads_frio_em;
       totalLeads.leads_frio_cl += item.leads.leads_frio_cl;
       totalLeads.ventas_cerradas += item.leads.ventas_cerradas;
+      totalLeads.leads_google_ads += item.leads.leads_google_ads || 0;
+      totalLeads.contactos_frio_cl += item.leads.contactos_frio_cl || 0;
+      totalLeads.contactos_frio_em += item.leads.contactos_frio_em || 0;
 
       // Añadir ventas detalle
       todasLasVentas.push(...item.ventasDetalle);
@@ -150,8 +160,8 @@ export const VentasResumenAgregado = ({
       totalServiciosOTRO: number;
       totalVacantes: number;
       montoTotal: number;
-      costoUnitario: number; // Para calcular el promedio de costo unitario por cliente
-      totalServicios: number; // Para ayudar a calcular el promedio
+      costoUnitario: number;
+      totalServicios: number;
     }> = {};
     
     todasLasVentas.forEach(venta => {
@@ -246,6 +256,22 @@ export const VentasResumenAgregado = ({
             <div>
               <p className="text-muted-foreground text-sm">VENTAS CERRADAS</p>
               <p className="text-lg font-medium">{datosAgregados.totalLeads.ventas_cerradas}</p>
+            </div>
+          </div>
+          
+          {/* Nueva línea para los otros campos */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <p className="text-muted-foreground text-sm">LEADS GOOGLE ADS</p>
+              <p className="text-lg font-medium">{datosAgregados.totalLeads.leads_google_ads}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">CONTACTOS FRIO CL</p>
+              <p className="text-lg font-medium">{datosAgregados.totalLeads.contactos_frio_cl}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">CONTACTOS FRIO EM</p>
+              <p className="text-lg font-medium">{datosAgregados.totalLeads.contactos_frio_em}</p>
             </div>
           </div>
         </CardContent>
