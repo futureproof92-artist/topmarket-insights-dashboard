@@ -408,9 +408,8 @@ const ReclutamientoPage = () => {
             
             <div className="text-center">
               {currentWeekData && (
-                <h2 className="text-lg font-medium">
-                  Semana del{' '}
-                  {format(currentWeekData.semana_inicio, "d 'de' MMMM", { locale: es })} - {format(currentWeekData.semana_fin, "d 'de' MMMM yyyy", { locale: es })}
+                <h2 className="text-lg font-bold">
+                  Semana del {format(currentWeekData.semana_inicio, "d", { locale: es })} al {format(currentWeekData.semana_fin, "d 'de' MMMM yyyy", { locale: es })}
                 </h2>
               )}
             </div>
