@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, subWeeks, addDays } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AppShell } from '@/components/layout/AppShell';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
@@ -16,73 +17,52 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 // Interfaces para los datos
 interface WeeklyRecruitmentData {
-  weekId: string;
-  weekStart: Date;
-  weekEnd: Date;
-  totalRecruitments: number;
-  totalFreelancers: number;
-  records: RecruitmentRecord[];
-}
-
-interface RecruitmentRecord {
-  id: string;
-  fecha: string;
-  reclutamientosConfirmados: number;
-  freelancersConfirmados: number;
+  id?: string;
+  semana: string;
+  semana_inicio: Date;
+  semana_fin: Date;
+  reclutamientos_confirmados: number;
+  freelancers_confirmados: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Fecha de referencia: 2 de mayo de 2025
 const CURRENT_DATE = new Date(2025, 4, 2); // Mayo es 4 en JavaScript (0-indexed)
 
-// Generamos datos históricos para 4 semanas
-const generateHistoricalData = () => {
-  const weeksData: WeeklyRecruitmentData[] = [];
+// Función para formatear fechas de semana
+const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
+  return `${format(weekStart, "d", { locale: es })}-${format(weekEnd, "d 'de' MMMM", { locale: es })}`;
+};
+
+// Función para crear una semana nueva
+const createWeekData = (dateOffset: number): WeeklyRecruitmentData => {
+  const weekStartDate = startOfWeek(subWeeks(CURRENT_DATE, dateOffset), { weekStartsOn: 1 });
+  const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
   
-  for (let i = 0; i < 4; i++) {
-    const weekStartDate = startOfWeek(subWeeks(CURRENT_DATE, i), { weekStartsOn: 1 });
-    const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
-    
-    // Generar algunos registros para esta semana
-    const weekRecords: RecruitmentRecord[] = [];
-    for (let day = 0; day < 2; day++) {
-      const recordDate = addDays(weekStartDate, day * 2 + 1);
-      weekRecords.push({
-        id: `${i}-${day}`,
-        fecha: format(recordDate, 'yyyy-MM-dd'),
-        reclutamientosConfirmados: Math.floor(Math.random() * 5) + 1,
-        freelancersConfirmados: Math.floor(Math.random() * 3)
-      });
-    }
-    
-    // Calcular los totales de la semana
-    const weekTotalRecruitments = weekRecords.reduce((sum, record) => sum + record.reclutamientosConfirmados, 0);
-    const weekTotalFreelancers = weekRecords.reduce((sum, record) => sum + record.freelancersConfirmados, 0);
-    
-    weeksData.push({
-      weekId: `semana-${format(weekStartDate, 'yyyy-MM-dd')}`,
-      weekStart: weekStartDate,
-      weekEnd: weekEndDate,
-      totalRecruitments: weekTotalRecruitments,
-      totalFreelancers: weekTotalFreelancers,
-      records: weekRecords
-    });
-  }
-  
-  return weeksData;
+  return {
+    semana: `semana-${format(weekStartDate, 'yyyy-MM-dd')}`,
+    semana_inicio: weekStartDate,
+    semana_fin: weekEndDate,
+    reclutamientos_confirmados: 0,
+    freelancers_confirmados: 0
+  };
 };
 
 const ReclutamientoPage = () => {
   const { toast } = useToast();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
-  const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>(generateHistoricalData);
+  const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedWeekId, setSelectedWeekId] = useState<string>('');
   const [currentWeekData, setCurrentWeekData] = useState<WeeklyRecruitmentData | null>(null);
   const [formData, setFormData] = useState({
-    reclutamientosConfirmados: '',
-    freelancersConfirmados: ''
+    reclutamientos_confirmados: '',
+    freelancers_confirmados: ''
   });
   
   // Determinar si el usuario actual es Karla Casillas
@@ -98,33 +78,88 @@ const ReclutamientoPage = () => {
   }, []);
   
   useEffect(() => {
-    // Establecer por defecto la semana actual como seleccionada
-    if (weeksData.length > 0) {
-      const currentWeekId = weeksData[0].weekId;
-      setSelectedWeekId(currentWeekId);
-      setCurrentWeekData(weeksData[0]);
-    }
-  }, [weeksData]);
-
-  // Funci��n para formatear el ID de la semana para mostrar en la UI
-  const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
-    return `${format(weekStart, "d", { locale: es })}-${format(weekEnd, "d 'de' MMMM", { locale: es })}`;
-  };
+    const fetchReclutamientoData = async () => {
+      setLoading(true);
+      try {
+        // Obtener datos de reclutamiento desde Supabase
+        const { data, error } = await supabase
+          .from('reclutamiento')
+          .select('*')
+          .order('semana_inicio', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching reclutamiento data:', error);
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los datos de reclutamiento",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        let weeksList: WeeklyRecruitmentData[] = [];
+        
+        // Si hay datos, convertir las fechas a objetos Date
+        if (data && data.length > 0) {
+          weeksList = data.map(week => ({
+            ...week,
+            semana_inicio: new Date(week.semana_inicio),
+            semana_fin: new Date(week.semana_fin)
+          }));
+        } else {
+          // Si no hay datos, crear algunas semanas predeterminadas
+          for (let i = 0; i < 4; i++) {
+            weeksList.push(createWeekData(i));
+          }
+          
+          // Guardar las semanas predeterminadas en la base de datos
+          for (const week of weeksList) {
+            await supabase.from('reclutamiento').insert({
+              semana: week.semana,
+              semana_inicio: week.semana_inicio.toISOString().split('T')[0],
+              semana_fin: week.semana_fin.toISOString().split('T')[0],
+              reclutamientos_confirmados: 0,
+              freelancers_confirmados: 0
+            });
+          }
+        }
+        
+        setWeeksData(weeksList);
+        
+        // Establecer la semana actual como seleccionada por defecto
+        if (weeksList.length > 0) {
+          setSelectedWeekId(weeksList[0].id || weeksList[0].semana);
+          setCurrentWeekData(weeksList[0]);
+          setFormData({
+            reclutamientos_confirmados: String(weeksList[0].reclutamientos_confirmados),
+            freelancers_confirmados: String(weeksList[0].freelancers_confirmados)
+          });
+        }
+      } catch (error) {
+        console.error('Error in fetchReclutamientoData:', error);
+        toast({
+          title: "Error",
+          description: "Ocurrió un error al cargar los datos",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReclutamientoData();
+  }, [toast]);
   
   // Manejar cambio de semana seleccionada
   const handleWeekChange = (weekId: string) => {
     setSelectedWeekId(weekId);
-    const selected = weeksData.find(week => week.weekId === weekId);
+    const selected = weeksData.find(week => (week.id || week.semana) === weekId);
     if (selected) {
       setCurrentWeekData(selected);
-      
-      // Si es Karla, actualizar el formulario con los datos de la semana
-      if (isKarlaCasillas && selected) {
-        setFormData({
-          reclutamientosConfirmados: selected.totalRecruitments.toString(),
-          freelancersConfirmados: selected.totalFreelancers.toString()
-        });
-      }
+      setFormData({
+        reclutamientos_confirmados: String(selected.reclutamientos_confirmados),
+        freelancers_confirmados: String(selected.freelancers_confirmados)
+      });
     }
   };
   
@@ -135,12 +170,12 @@ const ReclutamientoPage = () => {
   };
   
   // Guardar datos del formulario
-  const handleSaveData = () => {
+  const handleSaveData = async () => {
     if (!currentWeekData) return;
     
     // Validar entrada numérica 
-    const reclutamientosValue = parseInt(formData.reclutamientosConfirmados);
-    const freelancersValue = parseInt(formData.freelancersConfirmados);
+    const reclutamientosValue = parseInt(formData.reclutamientos_confirmados);
+    const freelancersValue = parseInt(formData.freelancers_confirmados);
 
     if (isNaN(reclutamientosValue) || isNaN(freelancersValue) || reclutamientosValue < 0 || freelancersValue < 0) {
       toast({
@@ -151,36 +186,66 @@ const ReclutamientoPage = () => {
       return;
     }
     
-    // Actualizar la semana con los datos ingresados
-    const updatedWeeksData = weeksData.map(week => {
-      if (week.weekId === selectedWeekId) {
-        return {
-          ...week,
-          totalRecruitments: reclutamientosValue,
-          totalFreelancers: freelancersValue
-        };
+    try {
+      // Actualizar en la base de datos
+      const { error } = await supabase
+        .from('reclutamiento')
+        .update({
+          reclutamientos_confirmados: reclutamientosValue,
+          freelancers_confirmados: freelancersValue,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', currentWeekData.id || '')
+        .eq('semana', currentWeekData.semana);
+      
+      if (error) {
+        console.error('Error updating reclutamiento data:', error);
+        toast({
+          title: "Error",
+          description: "No se pudieron guardar los datos",
+          variant: "destructive"
+        });
+        return;
       }
-      return week;
-    });
-    
-    setWeeksData(updatedWeeksData);
-    setCurrentWeekData({
-      ...currentWeekData,
-      totalRecruitments: reclutamientosValue,
-      totalFreelancers: freelancersValue
-    });
-    
-    toast({
-      title: "Datos guardados",
-      description: "La información se ha actualizado correctamente"
-    });
+      
+      // Actualizar los datos locales
+      const updatedWeeksData = weeksData.map(week => {
+        if ((week.id || week.semana) === selectedWeekId) {
+          return {
+            ...week,
+            reclutamientos_confirmados: reclutamientosValue,
+            freelancers_confirmados: freelancersValue
+          };
+        }
+        return week;
+      });
+      
+      setWeeksData(updatedWeeksData);
+      setCurrentWeekData({
+        ...currentWeekData,
+        reclutamientos_confirmados: reclutamientosValue,
+        freelancers_confirmados: freelancersValue
+      });
+      
+      toast({
+        title: "Datos guardados",
+        description: "La información se ha actualizado correctamente"
+      });
+    } catch (error) {
+      console.error('Error in handleSaveData:', error);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al guardar los datos",
+        variant: "destructive"
+      });
+    }
   };
   
   // Preparar datos para la gráfica de reclutamientos
   const recruitmentChartData = weeksData.map(week => ({
-    name: formatWeekLabel(week.weekStart, week.weekEnd),
-    reclutamientos: week.totalRecruitments,
-    freelancers: week.totalFreelancers
+    name: formatWeekLabel(week.semana_inicio, week.semana_fin),
+    reclutamientos: week.reclutamientos_confirmados,
+    freelancers: week.freelancers_confirmados
   })).reverse(); // Reversa para que las semanas más antiguas aparezcan primero
 
   if (!user) {
@@ -195,14 +260,18 @@ const ReclutamientoPage = () => {
           <Label htmlFor="week-select" className="block text-sm font-medium mb-2">
             Seleccionar Semana
           </Label>
-          <Select value={selectedWeekId} onValueChange={handleWeekChange}>
+          <Select 
+            value={selectedWeekId} 
+            onValueChange={handleWeekChange}
+            disabled={loading}
+          >
             <SelectTrigger className="w-full md:w-[300px]">
               <SelectValue placeholder="Seleccionar semana" />
             </SelectTrigger>
             <SelectContent>
               {weeksData.map(week => (
-                <SelectItem key={week.weekId} value={week.weekId}>
-                  Semana del {formatWeekLabel(week.weekStart, week.weekEnd)}
+                <SelectItem key={week.id || week.semana} value={week.id || week.semana}>
+                  Semana del {formatWeekLabel(week.semana_inicio, week.semana_fin)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -215,34 +284,40 @@ const ReclutamientoPage = () => {
             <h2 className="text-xl font-semibold">Registro de Reclutamientos</h2>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="reclutamientosConfirmados" className="block text-sm font-medium mb-2">
+                <Label htmlFor="reclutamientos_confirmados" className="block text-sm font-medium mb-2">
                   Reclutamientos confirmados esta semana
                 </Label>
                 <Input
-                  id="reclutamientosConfirmados"
-                  name="reclutamientosConfirmados"
+                  id="reclutamientos_confirmados"
+                  name="reclutamientos_confirmados"
                   type="number"
                   placeholder="Ingresa el número de reclutamientos"
-                  value={formData.reclutamientosConfirmados}
+                  value={formData.reclutamientos_confirmados}
                   onChange={handleFormChange}
                   className="w-full md:w-[300px]"
+                  disabled={loading}
                 />
               </div>
               <div>
-                <Label htmlFor="freelancersConfirmados" className="block text-sm font-medium mb-2">
+                <Label htmlFor="freelancers_confirmados" className="block text-sm font-medium mb-2">
                   Reclutamientos confirmados de freelancers esta semana
                 </Label>
                 <Input
-                  id="freelancersConfirmados"
-                  name="freelancersConfirmados"
+                  id="freelancers_confirmados"
+                  name="freelancers_confirmados"
                   type="number"
                   placeholder="Ingresa el número de freelancers"
-                  value={formData.freelancersConfirmados}
+                  value={formData.freelancers_confirmados}
                   onChange={handleFormChange}
                   className="w-full md:w-[300px]"
+                  disabled={loading}
                 />
               </div>
-              <Button onClick={handleSaveData} className="mt-4">
+              <Button 
+                onClick={handleSaveData} 
+                className="mt-4"
+                disabled={loading}
+              >
                 Guardar
               </Button>
             </div>
@@ -253,16 +328,14 @@ const ReclutamientoPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <DashboardCard
             title="Reclutamientos confirmados esta semana"
-            value={currentWeekData?.totalRecruitments || 0}
+            value={currentWeekData?.reclutamientos_confirmados || 0}
             description="Reclutamientos confirmados en la semana"
-            trend={{ value: 8, isPositive: true }}
           />
           
           <DashboardCard
             title="Reclutamientos confirmados de freelancers esta semana"
-            value={currentWeekData?.totalFreelancers || 0}
+            value={currentWeekData?.freelancers_confirmados || 0}
             description="Freelancers confirmados en la semana"
-            trend={{ value: 5, isPositive: true }}
           />
         </div>
         
@@ -280,14 +353,15 @@ const ReclutamientoPage = () => {
             />
             
             <KpiTable 
-              data={currentWeekData?.records.map(record => ({
-                id: record.id,
-                fecha: record.fecha,
-                monto: record.reclutamientosConfirmados,
-                detalles: `Freelancers: ${record.freelancersConfirmados}`
+              data={weeksData.map(week => ({
+                id: week.id || week.semana,
+                fecha: formatWeekLabel(week.semana_inicio, week.semana_fin),
+                monto: week.reclutamientos_confirmados,
+                detalles: `Freelancers: ${week.freelancers_confirmados}`
               })) || []}
               title="Historial de Reclutamiento" 
               onExportCSV={() => console.log('Export CSV Reclutamiento')}
+              loading={loading}
             />
           </>
         )}
