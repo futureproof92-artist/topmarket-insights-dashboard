@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,8 @@ interface LeadsData {
   leads_frio_cl: number;
   ventas_cerradas: number;
   leads_google_ads: number;
+  contactos_frio_cl: number;
+  contactos_frio_em: number;
 }
 interface LeadsFormProps {
   leadsData: LeadsData;
@@ -68,8 +71,32 @@ export const LeadsForm = ({
           </div>
         </div>
         
-        {/* Elemento para mostrar el total de leads de publicidad */}
-        
+        {/* Nueva línea para los campos de contactos en frío */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <Label htmlFor="contactos_frio_cl">TOTAL DE CONTACTOS EN FRIO CL</Label>
+            <Input 
+              id="contactos_frio_cl" 
+              type="number" 
+              min="0" 
+              value={leadsData.contactos_frio_cl || 0} 
+              onChange={e => handleInputChange('contactos_frio_cl', e.target.value)} 
+              className="mt-1" 
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="contactos_frio_em">TOTAL DE CONTACTOS EN FRIO EM</Label>
+            <Input 
+              id="contactos_frio_em" 
+              type="number" 
+              min="0" 
+              value={leadsData.contactos_frio_em || 0} 
+              onChange={e => handleInputChange('contactos_frio_em', e.target.value)} 
+              className="mt-1" 
+            />
+          </div>
+        </div>
       </CardContent>
     </Card>;
 };
