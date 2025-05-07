@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -10,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { 
+import {
   Card,
   CardHeader,
   CardTitle,
@@ -35,7 +36,18 @@ const CURRENT_DATE = new Date(2025, 4, 7); // Mayo es 4 en JavaScript (0-indexed
 
 // Función para formatear fechas de semana con el formato requerido
 const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
-  return `Lun ${format(weekStart, "d 'de' MMM", { locale: es })} a Dom ${format(weekEnd, "d 'de' MMM", { locale: es })}`;
+  // Verificar si los objetos Date son válidos
+  if (!(weekStart instanceof Date && !isNaN(weekStart.getTime())) ||
+      !(weekEnd instanceof Date && !isNaN(weekEnd.getTime()))) {
+    console.warn("[RECLUTAMIENTO_DEBUG] Fechas inválidas pasadas a formatWeekLabel:", weekStart, weekEnd);
+    return "Fechas no válidas";
+  }
+  try {
+    return `Lun ${format(weekStart, "d 'de' MMM", { locale: es })} a Dom ${format(weekEnd, "d 'de' MMM", { locale: es })}`;
+  } catch (error) {
+    console.error("[RECLUTAMIENTO_DEBUG] Error al formatear etiqueta de semana:", error, { weekStart, weekEnd });
+    return "Error de formato";
+  }
 };
 
 // Función para crear una semana nueva
@@ -94,9 +106,13 @@ const ReclutamientoPage = () => {
     // Obtener el usuario del localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      console.log("[RECLUTAMIENTO_DEBUG] Usuario cargado:", parsedUser);
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        console.log("[RECLUTAMIENTO_DEBUG] Usuario cargado:", parsedUser);
+      } catch (error) {
+        console.error("[RECLUTAMIENTO_DEBUG] Error parsing user from localStorage:", error);
+      }
     }
   }, []);
   
@@ -173,6 +189,7 @@ const ReclutamientoPage = () => {
           }
         }
         
+        console.log("[RECLUTAMIENTO_DEBUG] Lista de semanas final:", weeksList.length);
         setWeeksData(weeksList);
         
         // Establecer la semana actual como seleccionada por defecto
@@ -190,11 +207,16 @@ const ReclutamientoPage = () => {
             }
           });
           
+          console.log("[RECLUTAMIENTO_DEBUG] Índice de semana más cercana a la actual:", closestIndex);
           setCurrentWeekIndex(closestIndex);
-          setCurrentWeekData(weeksList[closestIndex]);
+          
+          const selectedWeek = weeksList[closestIndex];
+          console.log("[RECLUTAMIENTO_DEBUG] Semana seleccionada:", selectedWeek);
+          setCurrentWeekData(selectedWeek);
+          
           setFormData({
-            reclutamientos_confirmados: String(weeksList[closestIndex].reclutamientos_confirmados || 0),
-            freelancers_confirmados: String(weeksList[closestIndex].freelancers_confirmados || 0)
+            reclutamientos_confirmados: String(selectedWeek?.reclutamientos_confirmados || 0),
+            freelancers_confirmados: String(selectedWeek?.freelancers_confirmados || 0)
           });
         }
       } catch (error) {
@@ -390,10 +412,19 @@ const ReclutamientoPage = () => {
     return <div>Cargando...</div>;
   }
 
+  // Console log para depuración del navegador de semanas
+  console.log("[RECLUTAMIENTO_DEBUG] Render con estado:", {
+    loading,
+    weeksDataLength: weeksData.length,
+    currentWeekIndex,
+    currentWeekData,
+    formatFunctionWorks: currentWeekData ? formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin) : "N/A"
+  });
+
   return (
     <AppShell user={user}>
       <div className="space-y-6">
-        {/* Navegador de semanas con flechas */}
+        {/* Navegador de semanas con flechas - DEBUGGING */}
         <div className="mb-6">
           <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
             <Button 
@@ -401,15 +432,24 @@ const ReclutamientoPage = () => {
               size="icon" 
               onClick={goToPreviousWeek} 
               disabled={loading || currentWeekIndex <= 0}
+              className="border-2 border-blue-500" // Destacar el botón para debugging
             >
               <ChevronLeft className="h-4 w-4" />
+              <span className="sr-only">Anterior</span>
             </Button>
             
-            <div className="text-center">
-              {currentWeekData && (
-                <h2 className="text-lg font-bold">
-                  {formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)}
-                </h2>
+            <div className="text-center bg-slate-50 px-4 py-2 min-w-[200px] border border-red-500"> {/* Agregar borde para debugging */}
+              {loading ? (
+                <span className="text-lg font-semibold">Cargando semanas...</span>
+              ) : currentWeekData ? (
+                <>
+                  <h2 className="text-lg font-bold">
+                    {formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)}
+                  </h2>
+                  <span className="text-xs text-blue-500">Semana {currentWeekIndex + 1} de {weeksData.length}</span> {/* Texto de debugging */}
+                </>
+              ) : (
+                <span className="text-lg font-semibold text-red-500">No hay semana seleccionada</span>
               )}
             </div>
             
@@ -418,8 +458,10 @@ const ReclutamientoPage = () => {
               size="icon"
               onClick={goToNextWeek} 
               disabled={loading || currentWeekIndex >= weeksData.length - 1}
+              className="border-2 border-blue-500" // Destacar el botón para debugging
             >
               <ChevronRight className="h-4 w-4" />
+              <span className="sr-only">Siguiente</span>
             </Button>
           </div>
         </div>
