@@ -1,173 +1,119 @@
 
 import React, { useState } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-// Define valid table names as a type for type safety
-type ValidTableName = 'cobranza' | 'historial_semanal' | 'ventas_detalle' | 'pxr_cerrados' | 'hh_cerrados' | 'reclutamiento';
-
 interface DeleteDataButtonProps {
-  tableName: ValidTableName;
-  recordId?: string;
-  semanaId?: string;
-  semana?: string;
-  onSuccess?: () => void;
-  buttonText?: string;
+  tableName: string;
+  semanaId: string;
+  semana: string;
   deleteAllData?: boolean;
-  buttonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  buttonText?: string;
+  buttonVariant?: 'destructive' | 'outline' | 'default' | 'ghost' | 'link' | 'secondary';
+  onSuccess?: () => void;
 }
 
 export const DeleteDataButton = ({
   tableName,
-  recordId,
   semanaId,
   semana,
-  onSuccess,
-  buttonText = 'Eliminar',
   deleteAllData = false,
-  buttonVariant = 'destructive'
+  buttonText = 'Eliminar',
+  buttonVariant = 'outline',
+  onSuccess
 }: DeleteDataButtonProps) => {
-  const [open, setOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
-
+  const [loading, setLoading] = useState(false);
+  
   const handleDelete = async () => {
+    setLoading(true);
     try {
-      setIsDeleting(true);
-
-      // Verificar la sesión activa
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("[DELETE_DEBUG] Sesión al eliminar datos:", 
-        sessionData?.session ? "Activa" : "No hay sesión"
-      );
+      console.log(`Eliminando datos de ${tableName} con ID: ${semanaId}`);
       
-      if (!sessionData?.session) {
-        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
-      }
-
-      let errorMessage: string | null = null;
-
-      if (deleteAllData && semana) {
-        // Eliminar todos los datos de una semana específica
-        console.log(`[DELETE_DEBUG] Eliminando todos los datos de la semana ${semana} en la tabla ${tableName}`);
-        
-        if (tableName === 'historial_semanal') {
-          // Primero eliminamos los registros de ventas_detalle asociados
-          const { error: ventasError } = await supabase
-            .from('ventas_detalle')
-            .delete()
-            .eq('historial_id', semanaId);
-          
-          if (ventasError) {
-            console.error("[DELETE_DEBUG] Error al eliminar detalles de ventas:", ventasError);
-            errorMessage = ventasError.message;
-            throw new Error(errorMessage);
-          }
-          
-          // Luego eliminamos el registro del historial
-          const { error: historialError } = await supabase
-            .from('historial_semanal')
-            .delete()
-            .eq('id', semanaId);
-          
-          if (historialError) {
-            errorMessage = historialError.message;
-          }
-        } else {
-          // Para otras tablas, eliminamos por semana
-          const { error: deleteError } = await supabase
-            .from(tableName)
-            .delete()
-            .eq('semana', semana);
-          
-          if (deleteError) {
-            errorMessage = deleteError.message;
-          }
-        }
-      } else if (recordId) {
-        // Eliminar un registro específico
-        console.log(`[DELETE_DEBUG] Eliminando registro con ID ${recordId} de la tabla ${tableName}`);
-        
-        const { error: deleteError } = await supabase
-          .from(tableName)
+      // Handle different table structures
+      if (tableName === 'historial_semanal') {
+        // First delete related ventas_detalle records
+        const { error: deleteVentasError } = await supabase
+          .from('ventas_detalle')
           .delete()
-          .eq('id', recordId);
+          .eq('historial_id', semanaId);
+          
+        if (deleteVentasError) {
+          console.error('Error al eliminar ventas_detalle:', deleteVentasError);
+          throw deleteVentasError;
+        }
         
-        if (deleteError) {
-            errorMessage = deleteError.message;
+        // Then delete the historial_semanal record
+        const { error: deleteHistorialError } = await supabase
+          .from('historial_semanal')
+          .delete()
+          .eq('id', semanaId);
+          
+        if (deleteHistorialError) {
+          console.error('Error al eliminar historial_semanal:', deleteHistorialError);
+          throw deleteHistorialError;
         }
       } else {
-        throw new Error("No se proporcionó un ID de registro o información de semana para eliminar.");
+        // For other tables (cobranza, reclutamiento, etc.) just delete the record
+        const { error } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('id', semanaId);
+          
+        if (error) {
+          console.error(`Error al eliminar datos de ${tableName}:`, error);
+          throw error;
+        }
       }
-
-      if (errorMessage) {
-        console.error("[DELETE_DEBUG] Error al eliminar datos:", errorMessage);
-        throw new Error(errorMessage);
-      }
-
+      
       toast({
-        title: "Éxito",
-        description: "Datos eliminados correctamente",
+        title: 'Datos eliminados',
+        description: `Los datos de la semana ${semana} han sido eliminados correctamente`
       });
-
-      // Cerrar el diálogo y ejecutar callback
-      setOpen(false);
-      if (onSuccess) {
+      
+      // Call onSuccess callback if provided
+      if (onSuccess && typeof onSuccess === 'function') {
         onSuccess();
       }
+      
     } catch (error) {
-      console.error("[DELETE_DEBUG] Error en la operación de eliminación:", error);
-      
-      let errorMessage = "No se pudieron eliminar los datos";
-      
-      if (error instanceof Error) {
-        errorMessage += `: ${error.message}`;
-      }
-      
+      console.error('Error en Delete operation:', error);
       toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
+        title: 'Error',
+        description: 'No se pudieron eliminar los datos',
+        variant: 'destructive'
       });
     } finally {
-      setIsDeleting(false);
+      setLoading(false);
     }
   };
-
+  
   return (
-    <>
-      <Button 
-        variant={buttonVariant} 
-        size="sm" 
-        onClick={() => setOpen(true)}
-        disabled={isDeleting}
-      >
-        <Trash2 className="h-4 w-4 mr-2" />
-        {buttonText}
-      </Button>
-
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteAllData 
-                ? `Esta acción eliminará todos los datos de la semana seleccionada en ${tableName}. Esta acción no se puede deshacer.`
-                : `Esta acción eliminará el registro seleccionado de ${tableName}. Esta acción no se puede deshacer.`
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting ? 'Eliminando...' : 'Eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant={buttonVariant} size="sm" disabled={loading}>
+          <Trash2 className="h-4 w-4 mr-1" />
+          {buttonText}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Eliminar datos</AlertDialogTitle>
+          <AlertDialogDescription>
+            ¿Estás seguro de que deseas eliminar los datos de la semana {semana}?
+            {deleteAllData && <p className="font-bold text-red-500 mt-2">Esta acción eliminará todos los datos relacionados con esta semana y no se podrán recuperar.</p>}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+            {loading ? 'Eliminando...' : 'Eliminar'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
