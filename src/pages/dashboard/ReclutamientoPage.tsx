@@ -219,7 +219,9 @@ const ReclutamientoPage = () => {
         updated_at: new Date().toISOString()
       };
       
-      // Update by ID if available
+      console.log("[RECLUTAMIENTO_DEBUG] Updating record:", currentWeekData.id, updateData);
+      
+      // Update by ID if available - use from() directly without type casting
       const { data, error } = await supabase
         .from('reclutamiento')
         .update(updateData)
@@ -228,37 +230,49 @@ const ReclutamientoPage = () => {
       
       if (error) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', error);
+        
+        // Mostrar información más específica sobre el error
+        let errorMessage = "No se pudieron guardar los datos";
+        if (error.message.includes("permission denied")) {
+          errorMessage = "No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.";
+        } else if (error.code === "42501") {
+          errorMessage = "Error de permisos en la base de datos. El usuario actual no puede realizar esta operación.";
+        }
+        
         toast({
           title: "Error",
-          description: "No se pudieron guardar los datos",
+          description: errorMessage,
           variant: "destructive"
         });
         return;
       }
       
-      // Update local data
-      const updatedWeeksData = weeksData.map(week => {
-        if (week.id === currentWeekData.id) {
-          return {
-            ...week,
-            reclutamientos_confirmados: reclutamientosValue,
-            freelancers_confirmados: freelancersValue
-          };
-        }
-        return week;
-      });
-      
-      setWeeksData(updatedWeeksData);
-      setCurrentWeekData({
-        ...currentWeekData,
-        reclutamientos_confirmados: reclutamientosValue,
-        freelancers_confirmados: freelancersValue
-      });
-      
-      toast({
-        title: "Datos guardados",
-        description: "La información se ha actualizado correctamente"
-      });
+      // Actualizar datos locales solo si la actualización en la base de datos tuvo éxito
+      if (data && data.length > 0) {
+        // Update local data
+        const updatedWeeksData = weeksData.map(week => {
+          if (week.id === currentWeekData.id) {
+            return {
+              ...week,
+              reclutamientos_confirmados: reclutamientosValue,
+              freelancers_confirmados: freelancersValue
+            };
+          }
+          return week;
+        });
+        
+        setWeeksData(updatedWeeksData);
+        setCurrentWeekData({
+          ...currentWeekData,
+          reclutamientos_confirmados: reclutamientosValue,
+          freelancers_confirmados: freelancersValue
+        });
+        
+        toast({
+          title: "Datos guardados",
+          description: "La información se ha actualizado correctamente"
+        });
+      }
       
     } catch (error) {
       console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
@@ -290,6 +304,9 @@ const ReclutamientoPage = () => {
     ? formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)
     : "No hay semana seleccionada";
 
+  // Verificar si estamos en la última semana
+  const isLastWeek = currentWeekIndex === weeksData.length - 1;
+
   return (
     <AppShell user={user}>
       <div className="space-y-6">
@@ -303,6 +320,11 @@ const ReclutamientoPage = () => {
             onNext={goToNextWeek}
             loading={loading}
           />
+          {isLastWeek && (
+            <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded-md">
+              Has llegado a la última semana disponible. Si necesitas más semanas futuras, contacta al administrador.
+            </div>
+          )}
         </div>
 
         {/* Edit Form - visible for Karla Casillas or admins */}
@@ -347,6 +369,17 @@ const ReclutamientoPage = () => {
               >
                 {isSaving ? 'Guardando...' : 'Guardar'}
               </Button>
+              
+              {/* Debug info sólo para desarrollo */}
+              {isAdmin && (
+                <div className="mt-4 p-3 bg-slate-100 rounded-md text-xs text-slate-600">
+                  <p>Debug info (sólo admin):</p>
+                  <p>User Role: {user?.role}</p>
+                  <p>User Email: {user?.email}</p>
+                  <p>Can Edit: {canEdit ? 'Yes' : 'No'}</p>
+                  <p>Current Week ID: {currentWeekData?.id}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
