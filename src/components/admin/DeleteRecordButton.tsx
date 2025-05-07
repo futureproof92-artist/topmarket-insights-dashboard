@@ -6,32 +6,30 @@ import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface DeleteDataButtonProps {
+interface DeleteRecordButtonProps {
   tableName: "cobranza" | "hh_cerrados" | "historial_semanal" | "pxr_cerrados" | "reclutamiento" | "ventas_detalle";
-  semanaId: string;
-  semana: string;
-  deleteAllData?: boolean;
+  recordId: string;
+  onSuccess?: () => void;
   buttonText?: string;
   buttonVariant?: 'destructive' | 'outline' | 'default' | 'ghost' | 'link' | 'secondary';
-  onSuccess?: () => void;
+  confirmationText?: string;
 }
 
-export const DeleteDataButton = ({
+export const DeleteRecordButton = ({
   tableName,
-  semanaId,
-  semana,
-  deleteAllData = false,
+  recordId,
+  onSuccess,
   buttonText = 'Eliminar',
   buttonVariant = 'outline',
-  onSuccess
-}: DeleteDataButtonProps) => {
+  confirmationText = '¿Estás seguro de que deseas eliminar este registro?'
+}: DeleteRecordButtonProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   
   const handleDelete = async () => {
     setLoading(true);
     try {
-      console.log(`Eliminando datos de ${tableName} con ID: ${semanaId}`);
+      console.log(`Eliminando registro de ${tableName} con ID: ${recordId}`);
       
       // Handle different table structures
       if (tableName === 'historial_semanal') {
@@ -39,7 +37,7 @@ export const DeleteDataButton = ({
         const { error: deleteVentasError } = await supabase
           .from('ventas_detalle')
           .delete()
-          .eq('historial_id', semanaId);
+          .eq('historial_id', recordId);
           
         if (deleteVentasError) {
           console.error('Error al eliminar ventas_detalle:', deleteVentasError);
@@ -50,7 +48,7 @@ export const DeleteDataButton = ({
         const { error: deleteHistorialError } = await supabase
           .from('historial_semanal')
           .delete()
-          .eq('id', semanaId);
+          .eq('id', recordId);
           
         if (deleteHistorialError) {
           console.error('Error al eliminar historial_semanal:', deleteHistorialError);
@@ -61,7 +59,7 @@ export const DeleteDataButton = ({
         const { error } = await supabase
           .from(tableName)
           .delete()
-          .eq('id', semanaId);
+          .eq('id', recordId);
           
         if (error) {
           console.error(`Error al eliminar datos de ${tableName}:`, error);
@@ -70,8 +68,8 @@ export const DeleteDataButton = ({
       }
       
       toast({
-        title: 'Datos eliminados',
-        description: `Los datos de la semana ${semana} han sido eliminados correctamente`
+        title: 'Registro eliminado',
+        description: 'El registro ha sido eliminado correctamente'
       });
       
       // Call onSuccess callback if provided
@@ -83,7 +81,7 @@ export const DeleteDataButton = ({
       console.error('Error en Delete operation:', error);
       toast({
         title: 'Error',
-        description: 'No se pudieron eliminar los datos',
+        description: 'No se pudo eliminar el registro',
         variant: 'destructive'
       });
     } finally {
@@ -101,10 +99,9 @@ export const DeleteDataButton = ({
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar datos</AlertDialogTitle>
+          <AlertDialogTitle>Eliminar registro</AlertDialogTitle>
           <AlertDialogDescription>
-            ¿Estás seguro de que deseas eliminar los datos de la semana {semana}?
-            {deleteAllData && <p className="font-bold text-red-500 mt-2">Esta acción eliminará todos los datos relacionados con esta semana y no se podrán recuperar.</p>}
+            {confirmationText}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

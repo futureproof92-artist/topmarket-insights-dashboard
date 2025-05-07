@@ -1,6 +1,6 @@
 
-// Simplemente exportamos el hook desde el contexto de autenticación
+// Re-exportamos el hook desde su ubicación original
 import { useAuth } from '@/context/AuthContext';
 
-// Re-exportamos el hook desde su ubicación original
+// Re-exportamos el hook para mantener compatibilidad
 export { useAuth };
