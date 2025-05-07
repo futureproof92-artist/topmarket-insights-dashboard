@@ -17,11 +17,14 @@ export const TopBar = ({ user, impersonatedRole }: TopBarProps) => {
   const activeRole = impersonatedRole || user?.role;
   const isAdmin = user?.role === 'admin' || user?.email?.includes('sergio.t@topmarket.com.mx');
   
+  // Asegurarse de que siempre haya un título, incluso si activeRole es undefined
+  const pageTitle = getPageTitle(activeRole);
+  
   return (
-    <header className="border-b border-border p-4 flex items-center justify-between bg-background">
+    <header className="border-b border-border p-4 flex items-center justify-between bg-background sticky top-0 z-10">
       <div className="flex items-center">
         <h1 className="text-lg font-semibold">
-          {getPageTitle(activeRole)}
+          {pageTitle}
         </h1>
         
         {impersonatedRole && isAdmin && (

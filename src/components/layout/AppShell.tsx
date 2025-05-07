@@ -116,13 +116,13 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background">
+    <div className="min-h-screen flex flex-col md:flex-row bg-background w-full">
       <Sidebar 
         user={user} 
         impersonatedRole={impersonatedRole} 
         onImpersonate={handleImpersonate}
       />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar 
           user={user} 
           impersonatedRole={impersonatedRole} 
