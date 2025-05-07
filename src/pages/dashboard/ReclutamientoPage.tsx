@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format, startOfWeek, endOfWeek, subWeeks, addWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -31,12 +30,12 @@ interface WeeklyRecruitmentData {
   updated_at?: string;
 }
 
-// Fecha de referencia: 2 de mayo de 2025
-const CURRENT_DATE = new Date(2025, 4, 2); // Mayo es 4 en JavaScript (0-indexed)
+// Fecha de referencia actualizada: 7 de mayo de 2025 (Mexico City Time)
+const CURRENT_DATE = new Date(2025, 4, 7); // Mayo es 4 en JavaScript (0-indexed)
 
-// Función para formatear fechas de semana
+// Función para formatear fechas de semana con el formato requerido
 const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
-  return `${format(weekStart, "d", { locale: es })}-${format(weekEnd, "d 'de' MMMM", { locale: es })}`;
+  return `Lun ${format(weekStart, "d 'de' MMM", { locale: es })} a Dom ${format(weekEnd, "d 'de' MMM", { locale: es })}`;
 };
 
 // Función para crear una semana nueva
@@ -409,7 +408,7 @@ const ReclutamientoPage = () => {
             <div className="text-center">
               {currentWeekData && (
                 <h2 className="text-lg font-bold">
-                  Semana del {format(currentWeekData.semana_inicio, "d", { locale: es })} al {format(currentWeekData.semana_fin, "d 'de' MMMM yyyy", { locale: es })}
+                  {formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)}
                 </h2>
               )}
             </div>
