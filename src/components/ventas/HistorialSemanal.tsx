@@ -1,164 +1,151 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription,
+  CardContent
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, Download, DownloadCloud } from 'lucide-react';
+import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 
-import React, { useState } from 'react';
-import { VentaDetalle } from '@/pages/dashboard/VentasPage';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent } from '@/components/ui/card';
-import { DeleteDataButton } from '@/components/admin/DeleteDataButton';
-import { useAuth } from '@/context/AuthContext';
-
-interface LeadsData {
-  leads_pub_em: number;
-  leads_pub_cl: number;
-  leads_frio_em: number;
-  leads_frio_cl: number;
-  ventas_cerradas: number;
-}
-
-interface HistorialItem {
-  semana: string;
-  leads: LeadsData;
-  ventasDetalle: VentaDetalle[];
-  id?: string; // Agregamos el ID para la eliminación
-}
+import { useAuth } from '@/hooks/use-auth';
 
 interface HistorialSemanalProps {
-  historial: HistorialItem[];
-  onDataChange?: () => void; // Callback para notificar cambios
+  historialData: any[];
+  onExportCSV?: () => void;
+  currentIndex: number;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  totalPages: number;
+  onDeleteSuccess?: () => void;
+  loading?: boolean;
+  onExportSingleWeek?: (id: string) => void;
 }
 
-export const HistorialSemanal = ({
-  historial,
-  onDataChange
+export const HistorialSemanal = ({ 
+  historialData, 
+  onExportCSV, 
+  currentIndex, 
+  onPrevPage, 
+  onNextPage, 
+  totalPages,
+  onDeleteSuccess,
+  loading = false,
+  onExportSingleWeek
 }: HistorialSemanalProps) => {
   const { userRole } = useAuth();
   const isAdmin = userRole === 'admin';
-
-  return <div className="space-y-4">
-      <h2 className="text-xl font-bold">Historial de Reportes Semanales</h2>
-      
-      {historial.length > 0 ? <Accordion type="single" collapsible className="w-full">
-          {historial.map((item, index) => {
-            // Calculate metrics
-            const clientCount = new Set(item.ventasDetalle.map(v => v.cliente)).size;
-            const avgCost = item.ventasDetalle.length > 0 
-              ? item.ventasDetalle.reduce((sum, v) => sum + v.costo_unitario, 0) / item.ventasDetalle.length
-              : 0;
-            const totalVacancies = item.ventasDetalle.reduce((sum, v) => sum + v.total_vacs, 0);
-            
-            return (
-              <AccordionItem key={`semana-${index}`} value={`semana-${index}`} className="border rounded-lg mb-4 overflow-hidden">
-                <AccordionTrigger className="px-4 py-2 hover:bg-muted/50">
-                  <div className="flex flex-col sm:flex-row justify-between w-full items-start sm:items-center">
-                    <span className="font-medium">{item.semana}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground text-sm">
-                        {item.ventasDetalle.length} ventas | {item.leads.leads_pub_em + item.leads.leads_pub_cl + item.leads.leads_frio_em + item.leads.leads_frio_cl} leads totales
-                      </span>
-                      {isAdmin && item.id && (
-                        <DeleteDataButton 
-                          tableName="historial_semanal"
-                          semanaId={item.id}
-                          semana={item.semana}
-                          deleteAllData={true}
-                          onSuccess={onDataChange}
-                          buttonText="Eliminar semana"
-                          buttonVariant="outline"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="p-4 space-y-6">
-                    {/* Resumen de Leads */}
-                    <Card>
-                      <CardContent className="pt-6">
-                        <h3 className="font-semibold mb-4">Resumen de Leads</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          <div>
-                            <p className="text-muted-foreground text-sm">LEADS PUB EM</p>
-                            <p className="text-lg font-medium">{item.leads.leads_pub_em}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground text-sm">LEADS PUB CL</p>
-                            <p className="text-lg font-medium">{item.leads.leads_pub_cl}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground text-sm">LEADS FRIO EM</p>
-                            <p className="text-lg font-medium">{item.leads.leads_frio_em}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground text-sm">LEADS FRIO CL</p>
-                            <p className="text-lg font-medium">{item.leads.leads_frio_cl}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground text-sm">VENTAS CERRADAS</p>
-                            <p className="text-lg font-medium">{item.leads.ventas_cerradas}</p>
-                          </div>
+  
+  return (
+    <Card className="overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between px-6 py-4">
+        <div className="flex flex-col space-y-1">
+          <CardTitle className="text-2xl font-semibold tracking-tight">
+            Historial Semanal
+          </CardTitle>
+          <CardDescription>
+            Resumen de leads y ventas por semana
+          </CardDescription>
+        </div>
+        <Button variant="outline" size="sm" onClick={onExportCSV}>
+          <Download className="h-4 w-4 mr-2" />
+          Exportar CSV
+        </Button>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="p-8 text-center">
+            <p>Cargando datos...</p>
+          </div>
+        ) : historialData.length === 0 ? (
+          <div className="p-8 text-center">
+            <p>No hay datos para mostrar</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Semana</TableHead>
+                  <TableHead className="text-right">Leads Pub EM</TableHead>
+                  <TableHead className="text-right">Leads Pub CL</TableHead>
+                  <TableHead className="text-right">Leads Frio EM</TableHead>
+                  <TableHead className="text-right">Leads Frio CL</TableHead>
+                  <TableHead className="text-right">Ventas Cerradas</TableHead>
+                  <TableHead className="text-right"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {historialData.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.semana}</TableCell>
+                    <TableCell className="text-right">{item.leads_pub_em}</TableCell>
+                    <TableCell className="text-right">{item.leads_pub_cl}</TableCell>
+                    <TableCell className="text-right">{item.leads_frio_em}</TableCell>
+                    <TableCell className="text-right">{item.leads_frio_cl}</TableCell>
+                    <TableCell className="text-right">{item.ventas_cerradas}</TableCell>
+                    <TableCell className="text-right">
+                      {isAdmin && (
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onExportSingleWeek && onExportSingleWeek(item.id)}
+                          >
+                            <DownloadCloud className="h-4 w-4" />
+                          </Button>
+                          <DeleteRecordButton 
+                            tableName="historial_semanal"
+                            recordId={item.id}
+                            onSuccess={() => onDeleteSuccess && onDeleteSuccess()}
+                            buttonText="Eliminar"
+                            buttonVariant="ghost"
+                          />
                         </div>
-                      </CardContent>
-                    </Card>
-                    
-                    {/* Tabla de Ventas Detalle */}
-                    {item.ventasDetalle.length > 0 && (
-                      <div className="overflow-x-auto">
-                        <h3 className="font-semibold mb-4">Detalle de Ventas</h3>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Nombre Cliente</TableHead>
-                              <TableHead>Ubicación</TableHead>
-                              <TableHead>Tipo Servicio</TableHead>
-                              <TableHead>Costo Unitario</TableHead>
-                              <TableHead>Total Vacantes</TableHead>
-                              {isAdmin && <TableHead className="w-20">Acciones</TableHead>}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {item.ventasDetalle.map(venta => (
-                              <TableRow key={venta.id}>
-                                <TableCell>{venta.cliente}</TableCell>
-                                <TableCell>{venta.ubicacion}</TableCell>
-                                <TableCell>{venta.tipo_servicio}</TableCell>
-                                <TableCell>${venta.costo_unitario.toLocaleString('es-MX')}</TableCell>
-                                <TableCell>{venta.total_vacs}</TableCell>
-                                {isAdmin && (
-                                  <TableCell>
-                                    <DeleteDataButton 
-                                      tableName="ventas_detalle"
-                                      recordId={venta.id}
-                                      onSuccess={onDataChange}
-                                      buttonText=""
-                                      buttonVariant="ghost"
-                                    />
-                                  </TableCell>
-                                )}
-                              </TableRow>
-                            ))}
-                            <TableRow className="bg-muted/20">
-                              <TableCell className="font-medium">
-                                Contar clientes: {clientCount}
-                              </TableCell>
-                              <TableCell colSpan={isAdmin ? 3 : 2}></TableCell>
-                              <TableCell className="font-medium">
-                                Promedio costo: ${avgCost.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                Sumar vacantes: {totalVacancies}
-                              </TableCell>
-                            </TableRow>
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            );
-          })}
-        </Accordion> : <div className="text-center py-12 bg-muted rounded-lg">
-          <p className="text-muted-foreground">No hay registros históricos disponibles</p>
-        </div>}
-    </div>;
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="text-sm text-muted-foreground">
+            Página {currentIndex + 1} de {totalPages}
+          </div>
+          <div className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onPrevPage}
+              disabled={currentIndex === 0}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Anterior
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNextPage}
+              disabled={currentIndex === totalPages - 1}
+            >
+              Siguiente
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 };

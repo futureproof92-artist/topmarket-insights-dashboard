@@ -1,488 +1,445 @@
-
 import React, { useState, useEffect } from 'react';
-import { format, startOfWeek, endOfWeek, subWeeks, addDays, isWithinInterval } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AppShell } from '@/components/layout/AppShell';
-import { DashboardCard } from '@/components/dashboard/DashboardCard';
 import { ChartContainer } from '@/components/dashboard/ChartContainer';
-import { KpiTable } from '@/components/dashboard/KpiTable';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter,
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from '@/integrations/supabase/client';
-import { DeleteDataButton } from '@/components/admin/DeleteDataButton';
+import { useToast } from '@/hooks/use-toast';
+import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 
-// Interfaces para los datos
-interface WeeklyPxrData {
-  id?: string;
-  weekId: string;
-  weekStart: Date;
-  weekEnd: Date;
-  total: number;
-  mejoresCuentas: string;
-  records: PxrRecord[];
-}
-
-interface PxrRecord {
+// Interfaces
+interface PxrCerradosData {
   id: string;
-  fecha: string;
-  monto: number;
-  detalles: string;
+  semana: string;
+  semana_inicio: string;
+  semana_fin: string;
+  total_pxr_cerrados: number;
+  comentarios: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// Fecha de referencia: 2 de mayo de 2025
-const CURRENT_DATE = new Date(2025, 4, 2); // Mayo es 4 en JavaScript (0-indexed)
+interface WeeklyData {
+  semana_inicio: string;
+  semana_fin: string;
+  total_pxr_cerrados: number;
+  comentarios: string;
+}
 
-// Generamos datos históricos para 4 semanas
-const generateHistoricalData = () => {
-  const weeksData: WeeklyPxrData[] = [];
-  
-  for (let i = 0; i < 4; i++) {
-    const weekStartDate = startOfWeek(subWeeks(CURRENT_DATE, i), { weekStartsOn: 1 });
-    const weekEndDate = endOfWeek(weekStartDate, { weekStartsOn: 1 });
-    
-    // Generar algunos registros para esta semana
-    const weekRecords: PxrRecord[] = [];
-    for (let day = 0; day < 2; day++) {
-      const recordDate = addDays(weekStartDate, day * 2 + 1);
-      weekRecords.push({
-        id: `${i}-${day}`,
-        fecha: format(recordDate, 'yyyy-MM-dd'),
-        monto: Math.floor(Math.random() * 40000) + 20000,
-        detalles: `Proyecto XR Cliente ${String.fromCharCode(65 + i + day)}`
-      });
-    }
-    
-    // Calcular el total de la semana
-    const weekTotal = weekRecords.reduce((sum, record) => sum + record.monto, 0);
-    
-    weeksData.push({
-      weekId: `semana-${format(weekStartDate, 'yyyy-MM-dd')}`,
-      weekStart: weekStartDate,
-      weekEnd: weekEndDate,
-      total: weekTotal,
-      mejoresCuentas: `Cliente ${String.fromCharCode(65 + i)}, Cliente ${String.fromCharCode(66 + i)}`,
-      records: weekRecords
-    });
-  }
-  
-  return weeksData;
+// Constantes
+const initialFormData = {
+  total_pxr_cerrados: 0,
+  comentarios: '',
 };
 
 const PxrCerradosPage = () => {
+  // Hooks
   const { toast } = useToast();
   const [user, setUser] = useState<{ role: string; email: string } | null>(null);
-  const [weeksData, setWeeksData] = useState<WeeklyPxrData[]>([]);
-  const [selectedWeekId, setSelectedWeekId] = useState<string>('');
-  const [currentWeekData, setCurrentWeekData] = useState<WeeklyPxrData | null>(null);
-  const [formData, setFormData] = useState({
-    totalCerrado: '',
-    mejoresCuentas: ''
-  });
-  const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentWeekDates, setCurrentWeekDates] = useState('');
+  const [currentWeek, setCurrentWeek] = useState<PxrCerradosData | null>(null);
+  const [formData, setFormData] = useState(initialFormData);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [chartData, setChartData] = useState([]);
+  const [weeklySummaries, setWeeklySummaries] = useState<PxrCerradosData[]>([]);
+
+  // Estados para la paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Puedes ajustar este valor
   
-  // Determinar si el usuario actual es Gaby Davila
-  const isGabyDavila = user?.email?.toLowerCase().includes('davila') || user?.role === 'davila';
+  // Calcular el índice del primer y último elemento en la página actual
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentWeeklySummaries = weeklySummaries.slice(indexOfFirstItem, indexOfLastItem);
+
+  // Función para cambiar de página
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  
+  // Calcular el número total de páginas
+  const totalPages = Math.ceil(weeklySummaries.length / itemsPerPage);
+
+  // Determinar si el usuario actual es Davila
+  const isDavilaUser = user?.email?.toLowerCase().includes('rys_cdmx') || user?.email?.toLowerCase().includes('davila');
   const isAdmin = user?.role === 'admin';
-  
+
+  // Efecto para cargar el usuario desde localStorage
   useEffect(() => {
-    // Obtener el usuario del localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
   }, []);
 
-  // Cargar datos de PXR cerrados desde Supabase
+  // Efecto para actualizar las fechas de la semana actual
   useEffect(() => {
-    const fetchPxrData = async () => {
+    const startOfWeek = format(currentDate, 'yyyy-MM-dd', { locale: es });
+    const endOfWeek = format(new Date(currentDate.setDate(currentDate.getDate() + 6)), 'yyyy-MM-dd', { locale: es });
+    setCurrentWeekDates(`${startOfWeek} - ${endOfWeek}`);
+  }, [currentDate]);
+
+  // Efecto para cargar los datos de la semana actual
+  useEffect(() => {
+    const fetchCurrentWeekData = async () => {
       try {
-        setLoadingData(true);
-        // Intentar obtener datos de Supabase
+        const { data, error } = await supabase
+          .from('pxr_cerrados')
+          .select('*')
+          .eq('semana', currentWeekDates)
+          .single();
+
+        if (error) {
+          console.error('Error fetching current week data:', error);
+        }
+
+        if (data) {
+          setCurrentWeek(data);
+          setFormData({
+            total_pxr_cerrados: data.total_pxr_cerrados,
+            comentarios: data.comentarios,
+          });
+        } else {
+          setCurrentWeek(null);
+          setFormData(initialFormData);
+        }
+      } catch (error) {
+        console.error('Error fetching current week data:', error);
+      }
+    };
+
+    fetchCurrentWeekData();
+  }, [currentWeekDates]);
+
+  // Efecto para cargar el historial semanal
+  useEffect(() => {
+    const fetchWeeklySummaries = async () => {
+      try {
         const { data, error } = await supabase
           .from('pxr_cerrados')
           .select('*')
           .order('semana_inicio', { ascending: false });
-        
+
         if (error) {
-          throw error;
+          console.error('Error fetching weekly summaries:', error);
         }
-        
-        if (data && data.length > 0) {
-          // Transformar datos de Supabase al formato que espera la aplicación
-          const transformedData = data.map(item => {
-            const weekStartDate = new Date(item.semana_inicio);
-            const weekEndDate = new Date(item.semana_fin);
-            
-            return {
-              id: item.id,
-              weekId: `semana-${format(weekStartDate, 'yyyy-MM-dd')}`,
-              weekStart: weekStartDate,
-              weekEnd: weekEndDate,
-              total: item.total_pxr,
-              mejoresCuentas: item.mejores_cuentas || '',
-              records: [] // No tenemos registros detallados en este ejemplo
-            };
-          });
-          
-          setWeeksData(transformedData);
-        } else {
-          // Si no hay datos en Supabase, usar datos generados
-          setWeeksData(generateHistoricalData());
+
+        if (data) {
+          setWeeklySummaries(data);
         }
       } catch (error) {
-        console.error('Error al cargar datos de PXR:', error);
-        toast({
-          title: 'Error',
-          description: 'No se pudieron cargar los datos',
-          variant: 'destructive'
-        });
-        // Usar datos generados si hay un error
-        setWeeksData(generateHistoricalData());
-      } finally {
-        setLoadingData(false);
+        console.error('Error fetching weekly summaries:', error);
       }
     };
-    
-    if (user) {
-      fetchPxrData();
-    }
-  }, [user, toast]);
-  
-  useEffect(() => {
-    // Establecer por defecto la semana actual como seleccionada
-    if (weeksData.length > 0) {
-      const currentWeekId = weeksData[0].weekId;
-      setSelectedWeekId(currentWeekId);
-      setCurrentWeekData(weeksData[0]);
-    }
-  }, [weeksData]);
 
-  // Función para formatear el ID de la semana para mostrar en la UI
-  const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
-    return `${format(weekStart, "d", { locale: es })}-${format(weekEnd, "d 'de' MMMM", { locale: es })}`;
+    fetchWeeklySummaries();
+  }, []);
+
+  // Efecto para preparar los datos del gráfico
+  useEffect(() => {
+    const prepareChartData = () => {
+      const chartData = weeklySummaries.map(item => ({
+        name: item.semana,
+        pxr_cerrados: item.total_pxr_cerrados,
+      }));
+      setChartData(chartData);
+    };
+
+    prepareChartData();
+  }, [weeklySummaries]);
+
+  // Función para manejar el cambio de fecha
+  const handleDateChange = (date: Date) => {
+    setCurrentDate(date);
   };
-  
-  // Manejar cambio de semana seleccionada
-  const handleWeekChange = (weekId: string) => {
-    setSelectedWeekId(weekId);
-    const selected = weeksData.find(week => week.weekId === weekId);
-    if (selected) {
-      setCurrentWeekData(selected);
-      
-      // Si es Gaby o tiene rol davila, actualizar el formulario con los datos de la semana
-      if (isGabyDavila && selected) {
-        setFormData({
-          totalCerrado: selected.total.toString(),
-          mejoresCuentas: selected.mejoresCuentas || ''
-        });
-      }
-    }
-  };
-  
-  // Manejar cambios en el formulario
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+
+  // Función para manejar los cambios en el formulario
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
   };
-  
-  // Guardar datos del formulario en Supabase
+
+  // Función para guardar los datos
   const handleSaveData = async () => {
-    if (!currentWeekData) return;
-    
-    // Validar entrada numérica para el total
-    const totalValue = parseFloat(formData.totalCerrado);
-    if (isNaN(totalValue)) {
-      toast({
-        title: "Error",
-        description: "El valor del total debe ser numérico",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setLoading(true);
-    
+    setIsSaving(true);
     try {
-      // Convertir las fechas al formato correcto para Supabase
-      const weekStart = format(currentWeekData.weekStart, 'yyyy-MM-dd');
-      const weekEnd = format(currentWeekData.weekEnd, 'yyyy-MM-dd');
-      const semanaLabel = `Semana del ${formatWeekLabel(currentWeekData.weekStart, currentWeekData.weekEnd)}`;
-      
-      // Verificar si ya existe un registro con este ID
-      if (currentWeekData.id) {
+      if (currentWeek) {
         // Actualizar registro existente
         const { error } = await supabase
           .from('pxr_cerrados')
           .update({
-            total_pxr: totalValue,
-            mejores_cuentas: formData.mejoresCuentas,
-            updated_at: new Date().toISOString()
+            total_pxr_cerrados: parseInt(formData.total_pxr_cerrados.toString()),
+            comentarios: formData.comentarios,
+            updated_at: new Date().toISOString(),
           })
-          .eq('id', currentWeekData.id);
-          
-        if (error) throw error;
+          .eq('id', currentWeek.id);
+
+        if (error) {
+          console.error('Error updating data:', error);
+          toast({
+            title: 'Error',
+            description: 'No se pudieron actualizar los datos',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Éxito',
+            description: 'Datos actualizados correctamente',
+          });
+        }
       } else {
         // Crear nuevo registro
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('pxr_cerrados')
           .insert([
             {
-              semana: semanaLabel,
-              semana_inicio: weekStart,
-              semana_fin: weekEnd,
-              total_pxr: totalValue,
-              mejores_cuentas: formData.mejoresCuentas
-            }
-          ])
-          .select();
-          
-        if (error) throw error;
-        
-        // Actualizar el ID en el estado
-        if (data && data.length > 0) {
-          setCurrentWeekData({
-            ...currentWeekData,
-            id: data[0].id
+              semana: currentWeekDates,
+              semana_inicio: currentWeekDates.split(' - ')[0],
+              semana_fin: currentWeekDates.split(' - ')[1],
+              total_pxr_cerrados: parseInt(formData.total_pxr_cerrados.toString()),
+              comentarios: formData.comentarios,
+            },
+          ]);
+
+        if (error) {
+          console.error('Error creating data:', error);
+          toast({
+            title: 'Error',
+            description: 'No se pudieron guardar los datos',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Éxito',
+            description: 'Datos guardados correctamente',
           });
         }
       }
-      
-      // Actualizar los datos locales
-      const updatedWeeksData = weeksData.map(week => {
-        if (week.weekId === selectedWeekId) {
-          return {
-            ...week,
-            total: totalValue,
-            mejoresCuentas: formData.mejoresCuentas
-          };
-        }
-        return week;
-      });
-      
-      setWeeksData(updatedWeeksData);
-      
-      toast({
-        title: "Datos guardados",
-        description: "La información se ha actualizado correctamente"
-      });
     } catch (error) {
-      console.error('Error al guardar datos:', error);
+      console.error('Error saving data:', error);
       toast({
-        title: "Error",
-        description: "No se pudieron guardar los datos",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Ocurrió un error al guardar los datos',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
   
-  // Función para actualizar datos después de eliminar un registro
-  const handleDataRefresh = async () => {
+  // Función para eliminar un registro
+  const handleDeleteRecord = async () => {
     try {
-      setLoadingData(true);
-      const { data, error } = await supabase
-        .from('pxr_cerrados')
-        .select('*')
-        .order('semana_inicio', { ascending: false });
+      setIsDeleting(true);
       
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        const transformedData = data.map(item => {
-          const weekStartDate = new Date(item.semana_inicio);
-          const weekEndDate = new Date(item.semana_fin);
-          
-          return {
-            id: item.id,
-            weekId: `semana-${format(weekStartDate, 'yyyy-MM-dd')}`,
-            weekStart: weekStartDate,
-            weekEnd: weekEndDate,
-            total: item.total_pxr,
-            mejoresCuentas: item.mejores_cuentas || '',
-            records: []
-          };
+      if (!currentWeek) {
+        toast({
+          title: 'Error',
+          description: 'No hay registro para eliminar',
+          variant: 'destructive',
         });
+        return;
+      }
+      
+      const { error } = await supabase
+        .from('pxr_cerrados')
+        .delete()
+        .eq('id', currentWeek.id);
         
-        setWeeksData(transformedData);
-        // Si no hay semana seleccionada, seleccionar la primera
-        if (transformedData.length > 0 && (!selectedWeekId || !transformedData.find(w => w.weekId === selectedWeekId))) {
-          setSelectedWeekId(transformedData[0].weekId);
-          setCurrentWeekData(transformedData[0]);
-        }
+      if (error) {
+        console.error('Error deleting record:', error);
+        toast({
+          title: 'Error',
+          description: 'No se pudo eliminar el registro',
+          variant: 'destructive',
+        });
       } else {
-        setWeeksData([]);
-        setCurrentWeekData(null);
+        toast({
+          title: 'Éxito',
+          description: 'Registro eliminado correctamente',
+        });
+        // Limpiar el estado después de eliminar
+        setCurrentWeek(null);
+        setFormData(initialFormData);
       }
     } catch (error) {
-      console.error('Error al recargar datos:', error);
+      console.error('Error in delete operation:', error);
       toast({
-        title: "Error",
-        description: "No se pudieron recargar los datos",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Error al eliminar el registro',
+        variant: 'destructive',
       });
     } finally {
-      setLoadingData(false);
+      setIsDeleting(false);
     }
   };
   
-  // Preparar datos para la gráfica
-  const chartData = weeksData.map(week => ({
-    name: formatWeekLabel(week.weekStart, week.weekEnd),
-    pxr: Math.round(week.total / 1000) // Convertir a miles de MXN
-  })).reverse(); // Reversa para que las semanas más antiguas aparezcan primero
+  // Renderizado condicional para mostrar el número de página actual
+  const renderPageNumbers = () => {
+    const pageNumbers = [];
 
-  // Calcular el total acumulado de PXR cerrados
-  const totalPxr = currentWeekData ? currentWeekData.total : 0;
+    // Mostrar la primera página
+    pageNumbers.push(
+      <Button
+        key={1}
+        variant={currentPage === 1 ? "default" : "outline"}
+        onClick={() => paginate(1)}
+        disabled={currentPage === 1}
+      >
+        1
+      </Button>
+    );
+
+    // Mostrar "..." si hay más de 2 páginas entre la primera y la actual
+    if (currentPage > 3) {
+      pageNumbers.push(<span key="dots-start">...</span>);
+    }
+
+    // Mostrar la página anterior a la actual, la actual y la siguiente
+    for (let i = Math.max(2, currentPage - 1); i <= Math.min(totalPages - 1, currentPage + 1); i++) {
+      pageNumbers.push(
+        <Button
+          key={i}
+          variant={currentPage === i ? "default" : "outline"}
+          onClick={() => paginate(i)}
+        >
+          {i}
+        </Button>
+      );
+    }
+
+    // Mostrar "..." si hay más de 2 páginas entre la actual y la última
+    if (currentPage < totalPages - 2) {
+      pageNumbers.push(<span key="dots-end">...</span>);
+    }
+
+    // Mostrar la última página
+    if (totalPages > 1) {
+      pageNumbers.push(
+        <Button
+          key={totalPages}
+          variant={currentPage === totalPages ? "default" : "outline"}
+          onClick={() => paginate(totalPages)}
+          disabled={currentPage === totalPages}
+        >
+          {totalPages}
+        </Button>
+      );
+    }
+
+    return pageNumbers;
+  };
   
-  if (!user) {
-    return <div>Cargando...</div>;
-  }
-
   return (
     <AppShell user={user}>
       <div className="space-y-6">
-        {/* Selector de semana - visible para todos */}
-        <div className="mb-6">
-          <Label htmlFor="week-select" className="block text-sm font-medium mb-2">
-            Seleccionar Semana
-          </Label>
-          <Select value={selectedWeekId} onValueChange={handleWeekChange}>
-            <SelectTrigger className="w-full md:w-[300px]">
-              <SelectValue placeholder="Seleccionar semana" />
-            </SelectTrigger>
-            <SelectContent>
-              {weeksData.map(week => (
-                <SelectItem key={week.weekId} value={week.weekId}>
-                  Semana del {formatWeekLabel(week.weekStart, week.weekEnd)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Selector de fecha */}
+        <div>
+          <Label htmlFor="date">Selecciona la semana:</Label>
+          <Input
+            type="date"
+            id="date"
+            value={format(currentDate, 'yyyy-MM-dd')}
+            onChange={(e) => handleDateChange(new Date(e.target.value))}
+          />
+          <p>Semana seleccionada: {currentWeekDates}</p>
         </div>
-
-        {/* Vista específica para Gaby Davila */}
-        {isGabyDavila && (
-          <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
-            <h2 className="text-xl font-semibold">Registro de PXR Cerrados</h2>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="totalCerrado" className="block text-sm font-medium mb-2">
-                  Total cerrado (MXN)
-                </Label>
-                <Input
-                  id="totalCerrado"
-                  name="totalCerrado"
-                  type="number"
-                  placeholder="Ingresa el monto total en MXN"
-                  value={formData.totalCerrado}
-                  onChange={handleFormChange}
-                  className="w-full md:w-[300px]"
+        
+        {/* Formulario de edición */}
+        {isDavilaUser && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Registro de PXRs cerrados</CardTitle>
+              <CardDescription>
+                Ingresa los datos de PXRs cerrados para la semana {currentWeekDates}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-6">
+                <div>
+                  <Label htmlFor="total_pxr_cerrados">Total de PXRs cerrados:</Label>
+                  <Input
+                    type="number"
+                    id="total_pxr_cerrados"
+                    name="total_pxr_cerrados"
+                    value={formData.total_pxr_cerrados}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="comentarios">Comentarios:</Label>
+                  <Textarea
+                    id="comentarios"
+                    name="comentarios"
+                    value={formData.comentarios}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </form>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              {isAdmin && currentWeek && (
+                <DeleteRecordButton
+                  tableName="pxr_cerrados"
+                  recordId={currentWeek.id}
+                  onSuccess={handleDeleteRecord}
+                  buttonText="Eliminar registro"
+                  buttonVariant="outline"
                 />
+              )}
+              <div className="ml-auto">
+                <Button onClick={handleSaveData} disabled={isSaving || isDeleting}>
+                  {isSaving ? 'Guardando...' : 'Guardar'}
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="mejoresCuentas" className="block text-sm font-medium mb-2">
-                  Mejores cuentas de la semana
-                </Label>
-                <Textarea
-                  id="mejoresCuentas"
-                  name="mejoresCuentas"
-                  placeholder="Describe las mejores cuentas de esta semana"
-                  value={formData.mejoresCuentas}
-                  onChange={handleFormChange}
-                  className="h-24 w-full md:w-[500px]"
-                />
-              </div>
-              <Button 
-                onClick={handleSaveData} 
-                className="mt-4"
-                disabled={loading}
-              >
-                {loading ? 'Guardando...' : 'Guardar'}
-              </Button>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
         )}
         
-        {/* Tarjeta de KPI - visible para todos */}
-        <DashboardCard
-          title="Total PXR Cerrados"
-          value={`$${totalPxr.toLocaleString('es-MX')}`}
-          description="Monto total de proyectos XR cerrados en la semana"
-          trend={{ value: 14, isPositive: true }}
-          className="w-full md:w-1/2"
+        {/* Gráfico */}
+        <ChartContainer
+          title="Historial de PXRs cerrados"
+          data={chartData}
+          series={[{ name: 'PXRs Cerrados', dataKey: 'pxr_cerrados', color: '#82ca9d' }]}
+          type="line"
         />
         
-        {/* Vista adicional para administradores */}
-        {isAdmin && !isGabyDavila && (
-          <>
-            <ChartContainer
-              title="Resumen Semanal de PXR Cerrados (Miles MXN)"
-              data={chartData}
-              series={[
-                { name: 'Monto PXR', dataKey: 'pxr', color: '#0045FF' },
-              ]}
-              type="bar"
-            />
-            
-            {currentWeekData && currentWeekData.mejoresCuentas && (
-              <div className="bg-white p-6 rounded-lg border shadow-sm">
-                <h3 className="text-lg font-medium mb-4">Mejores cuentas de la semana</h3>
-                <p className="text-gray-700">{currentWeekData.mejoresCuentas}</p>
+        {/* Resumen semanal */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumen Semanal</CardTitle>
+            <CardDescription>
+              Historial de PXRs cerrados por semana
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {currentWeeklySummaries.map((item) => (
+              <div key={item.id} className="mb-4">
+                <h3 className="text-lg font-semibold">{item.semana}</h3>
+                <p>Total de PXRs cerrados: {item.total_pxr_cerrados}</p>
+                <p>Comentarios: {item.comentarios}</p>
               </div>
-            )}
-            
-            {/* Tabla de semanas con opciones de administración */}
-            <div className="bg-white p-6 rounded-lg border shadow-sm">
-              <h3 className="text-lg font-medium mb-4">Administrar Semanas PXR</h3>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2">Semana</th>
-                    <th className="text-right py-2">Monto</th>
-                    <th className="text-right py-2">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {weeksData.map(week => (
-                    <tr key={week.weekId} className="border-b">
-                      <td className="py-2">Semana del {formatWeekLabel(week.weekStart, week.weekEnd)}</td>
-                      <td className="text-right py-2">${week.total.toLocaleString('es-MX')}</td>
-                      <td className="text-right py-2">
-                        {week.id && (
-                          <DeleteDataButton
-                            tableName="pxr_cerrados"
-                            recordId={week.id}
-                            onSuccess={handleDataRefresh}
-                            buttonText="Eliminar"
-                            buttonVariant="outline"
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            <KpiTable 
-              data={currentWeekData?.records || []} 
-              title="Historial de PXR Cerrados" 
-              onExportCSV={() => console.log('Export CSV PXR')}
-            />
-          </>
-        )}
+            ))}
+          </CardContent>
+          <CardFooter className="flex justify-center space-x-2">
+            {renderPageNumbers()}
+          </CardFooter>
+        </Card>
       </div>
     </AppShell>
   );
