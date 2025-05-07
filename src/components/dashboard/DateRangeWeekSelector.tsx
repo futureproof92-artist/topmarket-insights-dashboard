@@ -2,8 +2,6 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 interface DateRangeWeekSelectorProps {
   currentIndex: number;
@@ -22,6 +20,9 @@ export const DateRangeWeekSelector = ({
   onNext,
   loading
 }: DateRangeWeekSelectorProps) => {
+  // Verificar si estamos en la última semana
+  const isLastWeek = currentIndex >= totalWeeks - 1;
+
   return (
     <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
       <Button 
@@ -47,12 +48,19 @@ export const DateRangeWeekSelector = ({
       
       <Button 
         variant="outline" 
-        size="icon"
+        size={isLastWeek ? "sm" : "icon"}
         onClick={onNext} 
-        disabled={loading || currentIndex >= totalWeeks - 1}
+        disabled={loading || isLastWeek}
+        className={isLastWeek ? "bg-amber-50 text-amber-600 border-amber-200" : ""}
       >
-        <ChevronRight className="h-4 w-4" />
-        <span className="sr-only">Siguiente</span>
+        {isLastWeek ? (
+          "Última semana"
+        ) : (
+          <>
+            <ChevronRight className="h-4 w-4" />
+            <span className="sr-only">Siguiente</span>
+          </>
+        )}
       </Button>
     </div>
   );

@@ -17,6 +17,13 @@ export const GenerateWeeksButton = ({ onSuccess }: GenerateWeeksButtonProps) => 
     setIsGenerating(true);
 
     try {
+      // Verificamos primero que la sesión es válida
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+      }
+
       // Obtenemos la fecha de la última semana
       const { data: existingWeeks, error: fetchError } = await supabase
         .from('reclutamiento')
@@ -51,6 +58,9 @@ export const GenerateWeeksButton = ({ onSuccess }: GenerateWeeksButtonProps) => 
           freelancers_confirmados: 0
         });
       }
+
+      // Log para debugging
+      console.log("[RECLUTAMIENTO_DEBUG] Intentando insertar semanas con token activo:", !!session.access_token);
 
       // Insertamos las nuevas semanas
       const { error: insertError } = await supabase

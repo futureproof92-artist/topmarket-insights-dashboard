@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { DateRangeWeekSelector } from '@/components/dashboard/DateRangeWeekSelector';
+import { GenerateWeeksButton } from '@/components/dashboard/GenerateWeeksButton';
 import {
   Card,
   CardHeader,
@@ -18,6 +19,8 @@ import {
   CardDescription,
   CardContent
 } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Shield, Info } from "lucide-react";
 
 // Interfaces for the data
 interface WeeklyRecruitmentData {
@@ -56,6 +59,7 @@ const ReclutamientoPage = () => {
     freelancers_confirmados: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Determine if the current user is Karla Casillas
   const isKarlaCasillas = user?.email?.toLowerCase().includes('reclutamiento') || 
@@ -78,80 +82,93 @@ const ReclutamientoPage = () => {
     }
   }, []);
   
-  // Fetch recruitment data
-  useEffect(() => {
-    const fetchReclutamientoData = async () => {
-      setLoading(true);
-      try {
-        console.log("[RECLUTAMIENTO_DEBUG] Loading recruitment data");
-        
-        // Get recruitment data from Supabase
-        const { data: existingData, error } = await supabase
-          .from('reclutamiento')
-          .select('*')
-          .order('semana_inicio', { ascending: true });
-        
-        if (error) {
-          console.error('[RECLUTAMIENTO_DEBUG] Error fetching recruitment data:', error);
-          toast({
-            title: "Error",
-            description: "No se pudieron cargar los datos de reclutamiento",
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        // Process and set the weeks data
-        if (existingData && existingData.length > 0) {
-          console.log("[RECLUTAMIENTO_DEBUG] Data found:", existingData.length);
-          
-          const weeksList = existingData.map(week => ({
-            ...week,
-            semana_inicio: new Date(week.semana_inicio),
-            semana_fin: new Date(week.semana_fin)
-          }));
-          
-          setWeeksData(weeksList);
-          
-          // Find the current week (closest to today)
-          const currentDate = CURRENT_DATE;
-          let closestIndex = 0;
-          let smallestDiff = Infinity;
-          
-          weeksList.forEach((week, index) => {
-            const diff = Math.abs(week.semana_inicio.getTime() - currentDate.getTime());
-            if (diff < smallestDiff) {
-              smallestDiff = diff;
-              closestIndex = index;
-            }
-          });
-          
-          setCurrentWeekIndex(closestIndex);
-          
-          const selectedWeek = weeksList[closestIndex];
-          setCurrentWeekData(selectedWeek);
-          
-          setFormData({
-            reclutamientos_confirmados: String(selectedWeek?.reclutamientos_confirmados || 0),
-            freelancers_confirmados: String(selectedWeek?.freelancers_confirmados || 0)
-          });
-        } else {
-          console.log("[RECLUTAMIENTO_DEBUG] No data found");
-          setWeeksData([]);
-        }
-      } catch (error) {
-        console.error('[RECLUTAMIENTO_DEBUG] Error in fetchReclutamientoData:', error);
+  // Refetch data function
+  const fetchReclutamientoData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log("[RECLUTAMIENTO_DEBUG] Loading recruitment data");
+      
+      // Verificamos primero que la sesión es válida
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        setLoading(false);
+        return;
+      }
+      
+      // Get recruitment data from Supabase
+      const { data: existingData, error } = await supabase
+        .from('reclutamiento')
+        .select('*')
+        .order('semana_inicio', { ascending: true });
+      
+      if (error) {
+        console.error('[RECLUTAMIENTO_DEBUG] Error fetching recruitment data:', error);
+        setError(`Error cargando datos: ${error.message}`);
         toast({
           title: "Error",
-          description: "Ocurrió un error al cargar los datos",
+          description: "No se pudieron cargar los datos de reclutamiento",
           variant: "destructive"
         });
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
-    
-    // Fetch data when user is available
+      
+      // Process and set the weeks data
+      if (existingData && existingData.length > 0) {
+        console.log("[RECLUTAMIENTO_DEBUG] Data found:", existingData.length);
+        
+        const weeksList = existingData.map(week => ({
+          ...week,
+          semana_inicio: new Date(week.semana_inicio),
+          semana_fin: new Date(week.semana_fin)
+        }));
+        
+        setWeeksData(weeksList);
+        
+        // Find the current week (closest to today)
+        const currentDate = CURRENT_DATE;
+        let closestIndex = 0;
+        let smallestDiff = Infinity;
+        
+        weeksList.forEach((week, index) => {
+          const diff = Math.abs(week.semana_inicio.getTime() - currentDate.getTime());
+          if (diff < smallestDiff) {
+            smallestDiff = diff;
+            closestIndex = index;
+          }
+        });
+        
+        setCurrentWeekIndex(closestIndex);
+        
+        const selectedWeek = weeksList[closestIndex];
+        setCurrentWeekData(selectedWeek);
+        
+        setFormData({
+          reclutamientos_confirmados: String(selectedWeek?.reclutamientos_confirmados || 0),
+          freelancers_confirmados: String(selectedWeek?.freelancers_confirmados || 0)
+        });
+      } else {
+        console.log("[RECLUTAMIENTO_DEBUG] No data found");
+        setWeeksData([]);
+      }
+    } catch (error) {
+      console.error('[RECLUTAMIENTO_DEBUG] Error in fetchReclutamientoData:', error);
+      setError(`Error inesperado: ${error instanceof Error ? error.message : 'Desconocido'}`);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al cargar los datos",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Fetch data when user is available
+  useEffect(() => {
     if (user) {
       fetchReclutamientoData();
     }
@@ -196,6 +213,7 @@ const ReclutamientoPage = () => {
     if (!currentWeekData) return;
     
     setIsSaving(true);
+    setError(null);
     
     // Validate numeric input
     const reclutamientosValue = parseInt(formData.reclutamientos_confirmados);
@@ -212,6 +230,17 @@ const ReclutamientoPage = () => {
     }
     
     try {
+      // Verificamos primero que la sesión es válida
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        setIsSaving(false);
+        return;
+      }
+      
+      console.log("[RECLUTAMIENTO_DEBUG] Token disponible:", !!session.access_token);
+      
       // Prepare the update object
       const updateData = {
         reclutamientos_confirmados: reclutamientosValue,
@@ -221,7 +250,7 @@ const ReclutamientoPage = () => {
       
       console.log("[RECLUTAMIENTO_DEBUG] Updating record:", currentWeekData.id, updateData);
       
-      // Update by ID if available - use from() directly without type casting
+      // Update by ID if available
       const { data, error } = await supabase
         .from('reclutamiento')
         .update(updateData)
@@ -234,9 +263,13 @@ const ReclutamientoPage = () => {
         // Mostrar información más específica sobre el error
         let errorMessage = "No se pudieron guardar los datos";
         if (error.message.includes("permission denied")) {
+          setError("No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.");
           errorMessage = "No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.";
         } else if (error.code === "42501") {
           errorMessage = "Error de permisos en la base de datos. El usuario actual no puede realizar esta operación.";
+          setError(errorMessage);
+        } else {
+          setError(`Error: ${error.message}`);
         }
         
         toast({
@@ -268,6 +301,8 @@ const ReclutamientoPage = () => {
           freelancers_confirmados: freelancersValue
         });
         
+        setError(null);
+        
         toast({
           title: "Datos guardados",
           description: "La información se ha actualizado correctamente"
@@ -276,6 +311,7 @@ const ReclutamientoPage = () => {
       
     } catch (error) {
       console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
+      setError(`Error inesperado: ${error instanceof Error ? error.message : 'Desconocido'}`);
       toast({
         title: "Error",
         description: "Ocurrió un error al guardar los datos",
@@ -320,12 +356,31 @@ const ReclutamientoPage = () => {
             onNext={goToNextWeek}
             loading={loading}
           />
+          
+          {/* Admin controls for generating future weeks */}
+          {isAdmin && isLastWeek && (
+            <div className="mt-4">
+              <GenerateWeeksButton onSuccess={fetchReclutamientoData} />
+            </div>
+          )}
+          
+          {/* Last week indicator */}
           {isLastWeek && (
-            <div className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded-md">
-              Has llegado a la última semana disponible. Si necesitas más semanas futuras, contacta al administrador.
+            <div className="mt-2 flex items-center text-sm text-amber-600 bg-amber-50 p-2 rounded-md border border-amber-200">
+              <Info className="h-4 w-4 mr-2 flex-shrink-0" />
+              <span>Has llegado a la última semana disponible. {isAdmin ? "" : "Si necesitas más semanas futuras, contacta al administrador."}</span>
             </div>
           )}
         </div>
+
+        {/* Error message display */}
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <Shield className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         {/* Edit Form - visible for Karla Casillas or admins */}
         {canEdit && (

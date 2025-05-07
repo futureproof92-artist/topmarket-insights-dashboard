@@ -6,7 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://wpsaktihetvpbykawvxl.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indwc2FrdGloZXR2cGJ5a2F3dnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMjM5NTcsImV4cCI6MjA2MTc5OTk1N30.WNkVhcE-kMqWfZR6oGwTZ1-eqheHTIz8at4nZKS3618";
 
-// Creamos el cliente de Supabase con persistencia de sesión habilitada
+// Creamos el cliente de Supabase con configuración óptima de sesión y autenticación
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
   SUPABASE_PUBLISHABLE_KEY,
@@ -15,12 +15,21 @@ export const supabase = createClient<Database>(
       persistSession: true,
       // Aseguramos que se use el localStorage para almacenar la sesión
       storage: window.localStorage,
-      // Corregimos cómo se manejan los tokens de recuperación
+      // Configuraciones para un manejo correcto de tokens JWT
       autoRefreshToken: true,
       detectSessionInUrl: true
     },
     global: {
-      // Añadimos headers para depuración y mejor seguimiento
+      // Añadimos headers para mejorar el debugging y seguimiento
+      headers: {
+        'X-Client-Info': 'topmarket-dashboard-app'
+      }
+    },
+    // Configuración para fijar las URLs base correctas
+    db: {
+      schema: 'public'
+    },
+    realtime: {
       headers: {
         'X-Client-Info': 'topmarket-dashboard-app'
       }
