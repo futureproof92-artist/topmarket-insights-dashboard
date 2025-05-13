@@ -14,7 +14,7 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       // Aseguramos que se use el localStorage para almacenar la sesión
-      storage: window.localStorage,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
       // Configuraciones para un manejo correcto de tokens JWT
       autoRefreshToken: true,
       detectSessionInUrl: true
@@ -36,3 +36,32 @@ export const supabase = createClient<Database>(
     }
   }
 );
+
+// Función de utilidad para verificar el token y derechos de acceso
+export const checkUserAccess = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.error("[ACCESS_CHECK] No hay sesión activa");
+      return { accessGranted: false };
+    }
+    
+    const userEmail = session.user.email?.toLowerCase();
+    const userRole = session.user.user_metadata?.role;
+    
+    const isKarla = userEmail?.includes('reclutamiento') || 
+                   userEmail?.includes('karla.casillas');
+    const isAdmin = userRole === 'admin' || 
+                   userEmail?.includes('sergio.t@topmarket.com.mx');
+    
+    return {
+      accessGranted: isKarla || isAdmin,
+      isKarla,
+      isAdmin,
+      session
+    };
+  } catch (error) {
+    console.error("[ACCESS_CHECK] Error verificando acceso:", error);
+    return { accessGranted: false };
+  }
+};

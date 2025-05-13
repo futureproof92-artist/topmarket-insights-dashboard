@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -9,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, checkUserAccess } from '@/integrations/supabase/client';
 import { DateRangeWeekSelector } from '@/components/dashboard/DateRangeWeekSelector';
 import { GenerateWeeksButton } from '@/components/dashboard/GenerateWeeksButton';
 import {
@@ -82,7 +81,128 @@ const ReclutamientoPage = () => {
     }
   }, []);
   
-  // Refetch data function
+  // Función de guardar mejorada que utiliza el patrón de retry con verificación de acceso
+  const handleSaveData = async () => {
+    if (!currentWeekData) return;
+    
+    setIsSaving(true);
+    setError(null);
+    
+    // Validate numeric input
+    const reclutamientosValue = parseInt(formData.reclutamientos_confirmados);
+    const freelancersValue = parseInt(formData.freelancers_confirmados);
+
+    if (isNaN(reclutamientosValue) || isNaN(freelancersValue) || reclutamientosValue < 0 || freelancersValue < 0) {
+      toast({
+        title: "Error",
+        description: "Los valores deben ser numéricos y no negativos",
+        variant: "destructive"
+      });
+      setIsSaving(false);
+      return;
+    }
+    
+    try {
+      // Verificar acceso de manera explícita
+      const { accessGranted, session } = await checkUserAccess();
+      
+      if (!accessGranted) {
+        setError("No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.");
+        setIsSaving(false);
+        return;
+      }
+      
+      if (!session) {
+        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        setIsSaving(false);
+        return;
+      }
+      
+      console.log("[RECLUTAMIENTO_DEBUG] Token disponible:", !!session.access_token);
+      console.log("[RECLUTAMIENTO_DEBUG] Actualizando record:", currentWeekData.id);
+      
+      // Prepare the update object - only include the necessary fields to evitar problemas con RLS
+      const updateData = {
+        reclutamientos_confirmados: reclutamientosValue,
+        freelancers_confirmados: freelancersValue
+      };
+      
+      // Update by ID using an optimized approach
+      const { data, error: updateError } = await supabase
+        .from('reclutamiento')
+        .update(updateData)
+        .eq('id', currentWeekData.id)
+        .select();
+      
+      if (updateError) {
+        console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
+        
+        // Mostrar información más específica sobre el error
+        let errorMessage = "No se pudieron guardar los datos";
+        if (updateError.message.includes("permission denied")) {
+          setError("Error de permisos. Detalles: " + updateError.message);
+          errorMessage = "Error de permisos de base de datos. Por favor, contacta al administrador.";
+        } else if (updateError.code === "42501") {
+          errorMessage = "Error de permisos en la base de datos. El usuario actual no puede realizar esta operación.";
+          setError(errorMessage);
+        } else {
+          setError(`Error: ${updateError.message}`);
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Actualizar datos locales solo si la actualización en la base de datos tuvo éxito
+      if (data && data.length > 0) {
+        // Update local data
+        const updatedWeeksData = weeksData.map(week => {
+          if (week.id === currentWeekData.id) {
+            return {
+              ...week,
+              reclutamientos_confirmados: reclutamientosValue,
+              freelancers_confirmados: freelancersValue
+            };
+          }
+          return week;
+        });
+        
+        setWeeksData(updatedWeeksData);
+        setCurrentWeekData({
+          ...currentWeekData,
+          reclutamientos_confirmados: reclutamientosValue,
+          freelancers_confirmados: freelancersValue
+        });
+        
+        setError(null);
+        
+        toast({
+          title: "Datos guardados",
+          description: "La información se ha actualizado correctamente"
+        });
+
+        // Refrescar los datos desde el servidor para confirmación
+        fetchReclutamientoData();
+      }
+      
+    } catch (error) {
+      console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
+      setError(`Error inesperado: ${error instanceof Error ? error.message : 'Desconocido'}`);
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al guardar los datos",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  // Refetch data function mejorada con manejo de errores
   const fetchReclutamientoData = async () => {
     setLoading(true);
     setError(null);
@@ -98,6 +218,9 @@ const ReclutamientoPage = () => {
         setLoading(false);
         return;
       }
+      
+      // Verificación adicional de token
+      console.log("[RECLUTAMIENTO_DEBUG] Token disponible:", !!session.access_token);
       
       // Get recruitment data from Supabase
       const { data: existingData, error } = await supabase
@@ -206,120 +329,6 @@ const ReclutamientoPage = () => {
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  // Save form data
-  const handleSaveData = async () => {
-    if (!currentWeekData) return;
-    
-    setIsSaving(true);
-    setError(null);
-    
-    // Validate numeric input
-    const reclutamientosValue = parseInt(formData.reclutamientos_confirmados);
-    const freelancersValue = parseInt(formData.freelancers_confirmados);
-
-    if (isNaN(reclutamientosValue) || isNaN(freelancersValue) || reclutamientosValue < 0 || freelancersValue < 0) {
-      toast({
-        title: "Error",
-        description: "Los valores deben ser numéricos y no negativos",
-        variant: "destructive"
-      });
-      setIsSaving(false);
-      return;
-    }
-    
-    try {
-      // Verificamos primero que la sesión es válida
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
-        setIsSaving(false);
-        return;
-      }
-      
-      console.log("[RECLUTAMIENTO_DEBUG] Token disponible:", !!session.access_token);
-      
-      // Prepare the update object
-      const updateData = {
-        reclutamientos_confirmados: reclutamientosValue,
-        freelancers_confirmados: freelancersValue,
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log("[RECLUTAMIENTO_DEBUG] Updating record:", currentWeekData.id, updateData);
-      
-      // Update by ID if available
-      const { data, error } = await supabase
-        .from('reclutamiento')
-        .update(updateData)
-        .eq('id', currentWeekData.id)
-        .select();
-      
-      if (error) {
-        console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', error);
-        
-        // Mostrar información más específica sobre el error
-        let errorMessage = "No se pudieron guardar los datos";
-        if (error.message.includes("permission denied")) {
-          setError("No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.");
-          errorMessage = "No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.";
-        } else if (error.code === "42501") {
-          errorMessage = "Error de permisos en la base de datos. El usuario actual no puede realizar esta operación.";
-          setError(errorMessage);
-        } else {
-          setError(`Error: ${error.message}`);
-        }
-        
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Actualizar datos locales solo si la actualización en la base de datos tuvo éxito
-      if (data && data.length > 0) {
-        // Update local data
-        const updatedWeeksData = weeksData.map(week => {
-          if (week.id === currentWeekData.id) {
-            return {
-              ...week,
-              reclutamientos_confirmados: reclutamientosValue,
-              freelancers_confirmados: freelancersValue
-            };
-          }
-          return week;
-        });
-        
-        setWeeksData(updatedWeeksData);
-        setCurrentWeekData({
-          ...currentWeekData,
-          reclutamientos_confirmados: reclutamientosValue,
-          freelancers_confirmados: freelancersValue
-        });
-        
-        setError(null);
-        
-        toast({
-          title: "Datos guardados",
-          description: "La información se ha actualizado correctamente"
-        });
-      }
-      
-    } catch (error) {
-      console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
-      setError(`Error inesperado: ${error instanceof Error ? error.message : 'Desconocido'}`);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar los datos",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
   };
   
   // Prepare chart data

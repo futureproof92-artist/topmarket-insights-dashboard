@@ -3,3 +3,7 @@ project_id = "wpsaktihetvpbykawvxl"
 
 [functions.reminder-emails]
 verify_jwt = false
+
+[auth.policies]
+# Esta configuración permite el acceso a la tabla de reclutamiento para los usuarios autenticados
+reclutamiento_policy = "authenticated"
