@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Shield, Info } from "lucide-react";
+import { useAuth } from '@/hooks/use-auth';
 
 // Interfaces for the data
 interface WeeklyRecruitmentData {
@@ -48,7 +49,7 @@ const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
 
 const ReclutamientoPage = () => {
   const { toast } = useToast();
-  const [user, setUser] = useState<{ role: string; email: string } | null>(null);
+  const { user, isKarla, isAdmin } = useAuth(); // Usamos el hook mejorado
   const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -60,28 +61,10 @@ const ReclutamientoPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Simplificamos la detección del rol basada en el email directamente
-  const userEmail = user?.email?.toLowerCase() || '';
-  const isKarla = userEmail.includes('reclutamiento') || userEmail.includes('karla.casillas');
-  const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
-  
-  // Determine if the user can edit
+  // Determine if the user can edit - simplificado, usando el hook useAuth
   const canEdit = isKarla || isAdmin;
   
-  // Load user from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error("[RECLUTAMIENTO_DEBUG] Error parsing user from localStorage:", error);
-      }
-    }
-  }, []);
-  
-  // Función de guardar mejorada que NO verifica permisos en cliente (confiamos en las RLS)
+  // Función de guardar mejorada que NO verifica permisos en cliente
   const handleSaveData = async () => {
     if (!currentWeekData?.id) {
       toast({
@@ -118,7 +101,8 @@ const ReclutamientoPage = () => {
         freelancers_confirmados: freelancersValue
       };
       
-      // Update by ID - SIMPLIFICADO SIN VERIFICACIONES EXTRAS
+      // IMPORTANTE: Actualizamos sin verificar permisos adicionales
+      // Las RLS policies en Supabase se encargarán de la autorización
       const { data, error: updateError } = await supabase
         .from('reclutamiento')
         .update(updateData)
@@ -128,10 +112,9 @@ const ReclutamientoPage = () => {
       if (updateError) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
         
-        // Mostrar información más específica sobre el error
         let errorMessage = "No se pudieron guardar los datos";
         if (updateError.message.includes("permission denied")) {
-          setError("Error de permisos. Detalles: " + updateError.message);
+          setError("Error de permisos: " + updateError.message);
           errorMessage = "Error de permisos de base de datos. Por favor, contacta al administrador.";
         } else {
           setError(`Error: ${updateError.message}`);
@@ -145,7 +128,7 @@ const ReclutamientoPage = () => {
         return;
       }
       
-      // Actualizar datos locales solo si la actualización en la base de datos tuvo éxito
+      // Actualizar datos locales
       if (data && data.length > 0) {
         // Update local data
         const updatedWeeksData = weeksData.map(week => {
@@ -190,7 +173,7 @@ const ReclutamientoPage = () => {
     }
   };
   
-  // Refetch data function mejorada con manejo de errores
+  // Refetch data function mejorada
   const fetchReclutamientoData = async () => {
     setLoading(true);
     setError(null);
@@ -198,7 +181,7 @@ const ReclutamientoPage = () => {
     try {
       console.log("[RECLUTAMIENTO_DEBUG] Loading recruitment data");
       
-      // Get recruitment data from Supabase - SIN VERIFICACIONES ADICIONALES
+      // Get recruitment data from Supabase
       const { data: existingData, error } = await supabase
         .from('reclutamiento')
         .select('*')
@@ -266,12 +249,10 @@ const ReclutamientoPage = () => {
     }
   };
   
-  // Fetch data when user is available
+  // Fetch data when component mounts
   useEffect(() => {
-    if (user) {
-      fetchReclutamientoData();
-    }
-  }, [toast, user]);
+    fetchReclutamientoData();
+  }, [toast]);
   
   // Navigate to previous week
   const goToPreviousWeek = () => {
@@ -317,6 +298,7 @@ const ReclutamientoPage = () => {
     }))
     .reverse();
 
+  // UI para cuando no hay usuario
   if (!user) {
     return <div>Cargando...</div>;
   }
@@ -367,7 +349,7 @@ const ReclutamientoPage = () => {
           </Alert>
         )}
 
-        {/* Edit Form - visible for Karla Casillas or admins */}
+        {/* Edit Form - visible for Karla Casillas o admins */}
         {canEdit && (
           <div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
             <h2 className="text-xl font-semibold">Registro de Reclutamientos</h2>
@@ -410,12 +392,13 @@ const ReclutamientoPage = () => {
                 {isSaving ? 'Guardando...' : 'Guardar'}
               </Button>
               
-              {/* Debug info sólo para desarrollo */}
+              {/* Debug info - solo para desarrollo */}
               {isAdmin && (
                 <div className="mt-4 p-3 bg-slate-100 rounded-md text-xs text-slate-600">
                   <p>Debug info (sólo admin):</p>
-                  <p>User Role: {user?.role}</p>
                   <p>User Email: {user?.email}</p>
+                  <p>Is Karla: {isKarla ? 'Yes' : 'No'}</p>
+                  <p>Is Admin: {isAdmin ? 'Yes' : 'No'}</p>
                   <p>Can Edit: {canEdit ? 'Yes' : 'No'}</p>
                   <p>Current Week ID: {currentWeekData?.id}</p>
                 </div>

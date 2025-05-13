@@ -37,7 +37,7 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Función de utilidad para verificar el token y derechos de acceso - MEJORADA
+// Función de utilidad para verificar derechos de acceso basado ÚNICAMENTE en el JWT
 export const checkUserAccess = async () => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -46,16 +46,17 @@ export const checkUserAccess = async () => {
       return { accessGranted: false };
     }
     
-    // Obtenemos información directamente del JWT sin consultar auth.users
+    // IMPORTANTE: Solo utilizamos el email del JWT para determinar permisos
+    // Eliminamos cualquier consulta a auth.users que podría causar errores de permisos
     const userEmail = session.user.email?.toLowerCase() || '';
     
-    // Verificación simplificada que no depende de metadata ni consultas a auth.users
+    // Verificación simplificada basada ÚNICAMENTE en el email (que está en el JWT)
     const isKarla = userEmail.includes('reclutamiento') || 
                     userEmail.includes('karla.casillas');
                     
     const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
     
-    console.log("[ACCESS_CHECK] Verificación de acceso:", { 
+    console.log("[ACCESS_CHECK] Verificación de acceso por JWT:", { 
       email: userEmail, 
       isKarla, 
       isAdmin,
