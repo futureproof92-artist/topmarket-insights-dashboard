@@ -6,13 +6,14 @@ import { useAuth as useOriginalAuth } from '@/context/AuthContext';
 export const useAuth = () => {
   const authContext = useOriginalAuth();
   
-  // Verificación mejorada de permisos para Karla
-  const isKarla = authContext.user?.email?.toLowerCase().includes('reclutamiento') || 
-                 authContext.user?.email?.toLowerCase().includes('karla.casillas') ||
-                 authContext.userRole === 'karla';
+  // Obtener el email para verificaciones directas
+  const userEmail = authContext.user?.email?.toLowerCase() || '';
   
-  const isAdmin = authContext.userRole === 'admin' || 
-                 authContext.user?.email?.toLowerCase().includes('sergio.t@topmarket.com.mx');
+  // Verificación mejorada de permisos basada en el email directamente
+  const isKarla = userEmail.includes('reclutamiento') || 
+                 userEmail.includes('karla.casillas');
+  
+  const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
   
   // Verificar acceso específico a la sección de reclutamiento
   const hasReclutamientoAccess = isKarla || isAdmin;

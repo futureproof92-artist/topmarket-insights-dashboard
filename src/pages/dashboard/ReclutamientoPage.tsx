@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase, checkUserAccess } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 import { DateRangeWeekSelector } from '@/components/dashboard/DateRangeWeekSelector';
 import { GenerateWeeksButton } from '@/components/dashboard/GenerateWeeksButton';
 import {
@@ -60,13 +60,13 @@ const ReclutamientoPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Determine if the current user is Karla Casillas
-  const isKarlaCasillas = user?.email?.toLowerCase().includes('reclutamiento') || 
-                        user?.email?.toLowerCase().includes('karla.casillas');
-  const isAdmin = user?.role === 'admin';
+  // Simplificamos la detección del rol basada en el email directamente
+  const userEmail = user?.email?.toLowerCase() || '';
+  const isKarla = userEmail.includes('reclutamiento') || userEmail.includes('karla.casillas');
+  const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
   
   // Determine if the user can edit
-  const canEdit = isKarlaCasillas || isAdmin;
+  const canEdit = isKarla || isAdmin;
   
   // Load user from localStorage
   useEffect(() => {
@@ -81,9 +81,16 @@ const ReclutamientoPage = () => {
     }
   }, []);
   
-  // Función de guardar mejorada que utiliza el patrón de retry con verificación de acceso
+  // Función de guardar mejorada que NO verifica permisos en cliente (confiamos en las RLS)
   const handleSaveData = async () => {
-    if (!currentWeekData) return;
+    if (!currentWeekData?.id) {
+      toast({
+        title: "Error",
+        description: "No hay una semana seleccionada para actualizar",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsSaving(true);
     setError(null);
@@ -103,31 +110,15 @@ const ReclutamientoPage = () => {
     }
     
     try {
-      // Verificar acceso de manera explícita
-      const { accessGranted, session } = await checkUserAccess();
-      
-      if (!accessGranted) {
-        setError("No tienes permiso para actualizar estos datos. Por favor, contacta al administrador.");
-        setIsSaving(false);
-        return;
-      }
-      
-      if (!session) {
-        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
-        setIsSaving(false);
-        return;
-      }
-      
-      console.log("[RECLUTAMIENTO_DEBUG] Token disponible:", !!session.access_token);
       console.log("[RECLUTAMIENTO_DEBUG] Actualizando record:", currentWeekData.id);
       
-      // Prepare the update object - only include the necessary fields to evitar problemas con RLS
+      // Prepare the update object - only include the necessary fields
       const updateData = {
         reclutamientos_confirmados: reclutamientosValue,
         freelancers_confirmados: freelancersValue
       };
       
-      // Update by ID using an optimized approach
+      // Update by ID - SIMPLIFICADO SIN VERIFICACIONES EXTRAS
       const { data, error: updateError } = await supabase
         .from('reclutamiento')
         .update(updateData)
@@ -142,9 +133,6 @@ const ReclutamientoPage = () => {
         if (updateError.message.includes("permission denied")) {
           setError("Error de permisos. Detalles: " + updateError.message);
           errorMessage = "Error de permisos de base de datos. Por favor, contacta al administrador.";
-        } else if (updateError.code === "42501") {
-          errorMessage = "Error de permisos en la base de datos. El usuario actual no puede realizar esta operación.";
-          setError(errorMessage);
         } else {
           setError(`Error: ${updateError.message}`);
         }
@@ -210,19 +198,7 @@ const ReclutamientoPage = () => {
     try {
       console.log("[RECLUTAMIENTO_DEBUG] Loading recruitment data");
       
-      // Verificamos primero que la sesión es válida
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        setError("No hay sesión activa. Por favor, inicia sesión nuevamente.");
-        setLoading(false);
-        return;
-      }
-      
-      // Verificación adicional de token
-      console.log("[RECLUTAMIENTO_DEBUG] Token disponible:", !!session.access_token);
-      
-      // Get recruitment data from Supabase
+      // Get recruitment data from Supabase - SIN VERIFICACIONES ADICIONALES
       const { data: existingData, error } = await supabase
         .from('reclutamiento')
         .select('*')
@@ -333,13 +309,13 @@ const ReclutamientoPage = () => {
   
   // Prepare chart data
   const recruitmentChartData = weeksData
-    .slice(Math.max(0, weeksData.length - 12)) // Show only the last 12 weeks
+    .slice(Math.max(0, weeksData.length - 12))
     .map(week => ({
       name: formatWeekLabel(week.semana_inicio, week.semana_fin),
       reclutamientos: week.reclutamientos_confirmados,
       freelancers: week.freelancers_confirmados
     }))
-    .reverse(); // Reverse to show oldest weeks first
+    .reverse();
 
   if (!user) {
     return <div>Cargando...</div>;
@@ -472,7 +448,7 @@ const ReclutamientoPage = () => {
         </div>
         
         {/* Admin View */}
-        {isAdmin && !isKarlaCasillas && (
+        {isAdmin && !isKarla && (
           <>
             <ChartContainer
               title="Resumen Semanal de Reclutamiento"
