@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -21,28 +22,35 @@ import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 import { useAuth } from '@/hooks/use-auth';
 
 interface HistorialSemanalProps {
-  historialData: any[];
+  historialData?: any[];
   onExportCSV?: () => void;
-  currentIndex: number;
-  onPrevPage: () => void;
-  onNextPage: () => void;
-  totalPages: number;
+  currentIndex?: number;
+  onPrevPage?: () => void;
+  onNextPage?: () => void;
+  totalPages?: number;
   onDeleteSuccess?: () => void;
   loading?: boolean;
   onExportSingleWeek?: (id: string) => void;
+  // Añadir propiedades que están siendo usadas en VentasPage.tsx
+  historial?: any[];
+  onDataChange?: () => Promise<void>;
 }
 
 export const HistorialSemanal = ({ 
-  historialData, 
-  onExportCSV, 
-  currentIndex, 
-  onPrevPage, 
-  onNextPage, 
-  totalPages,
-  onDeleteSuccess,
+  historialData = [], 
+  onExportCSV = () => {}, 
+  currentIndex = 0, 
+  onPrevPage = () => {}, 
+  onNextPage = () => {}, 
+  totalPages = 1,
+  onDeleteSuccess = () => {},
   loading = false,
-  onExportSingleWeek
+  onExportSingleWeek = () => {},
+  historial = [],
+  onDataChange = async () => {}
 }: HistorialSemanalProps) => {
+  // Usar historial si está presente, de lo contrario usar historialData
+  const dataToDisplay = historial.length > 0 ? historial : historialData;
   const { userRole } = useAuth();
   const isAdmin = userRole === 'admin';
   
@@ -67,7 +75,7 @@ export const HistorialSemanal = ({
           <div className="p-8 text-center">
             <p>Cargando datos...</p>
           </div>
-        ) : historialData.length === 0 ? (
+        ) : dataToDisplay.length === 0 ? (
           <div className="p-8 text-center">
             <p>No hay datos para mostrar</p>
           </div>
@@ -86,14 +94,14 @@ export const HistorialSemanal = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {historialData.map((item) => (
+                {dataToDisplay.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.semana}</TableCell>
-                    <TableCell className="text-right">{item.leads_pub_em}</TableCell>
-                    <TableCell className="text-right">{item.leads_pub_cl}</TableCell>
-                    <TableCell className="text-right">{item.leads_frio_em}</TableCell>
-                    <TableCell className="text-right">{item.leads_frio_cl}</TableCell>
-                    <TableCell className="text-right">{item.ventas_cerradas}</TableCell>
+                    <TableCell className="text-right">{item.leads?.leads_pub_em || item.leads_pub_em}</TableCell>
+                    <TableCell className="text-right">{item.leads?.leads_pub_cl || item.leads_pub_cl}</TableCell>
+                    <TableCell className="text-right">{item.leads?.leads_frio_em || item.leads_frio_em}</TableCell>
+                    <TableCell className="text-right">{item.leads?.leads_frio_cl || item.leads_frio_cl}</TableCell>
+                    <TableCell className="text-right">{item.leads?.ventas_cerradas || item.ventas_cerradas}</TableCell>
                     <TableCell className="text-right">
                       {isAdmin && (
                         <div className="flex justify-end gap-2">

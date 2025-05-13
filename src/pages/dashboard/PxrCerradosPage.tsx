@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -106,10 +107,21 @@ const PxrCerradosPage = () => {
         }
 
         if (data) {
-          setCurrentWeek(data);
+          // Mapear los campos de la base de datos a nuestra interfaz PxrCerradosData
+          setCurrentWeek({
+            id: data.id,
+            semana: data.semana,
+            semana_inicio: data.semana_inicio,
+            semana_fin: data.semana_fin,
+            total_pxr_cerrados: data.total_pxr, // Mapeo entre total_pxr de la BD y total_pxr_cerrados del frontend
+            comentarios: data.mejores_cuentas || '', // Mapeo entre mejores_cuentas de la BD y comentarios del frontend
+            created_at: data.created_at,
+            updated_at: data.updated_at
+          });
+          
           setFormData({
-            total_pxr_cerrados: data.total_pxr_cerrados,
-            comentarios: data.comentarios,
+            total_pxr_cerrados: data.total_pxr, // Mapeo entre total_pxr de la BD y total_pxr_cerrados del frontend
+            comentarios: data.mejores_cuentas || '', // Mapeo entre mejores_cuentas de la BD y comentarios del frontend
           });
         } else {
           setCurrentWeek(null);
@@ -137,7 +149,19 @@ const PxrCerradosPage = () => {
         }
 
         if (data) {
-          setWeeklySummaries(data);
+          // Mapear todos los elementos a nuestra interfaz PxrCerradosData
+          const mappedData: PxrCerradosData[] = data.map(item => ({
+            id: item.id,
+            semana: item.semana,
+            semana_inicio: item.semana_inicio,
+            semana_fin: item.semana_fin,
+            total_pxr_cerrados: item.total_pxr,
+            comentarios: item.mejores_cuentas || '',
+            created_at: item.created_at,
+            updated_at: item.updated_at
+          }));
+          
+          setWeeklySummaries(mappedData);
         }
       } catch (error) {
         console.error('Error fetching weekly summaries:', error);
@@ -183,8 +207,8 @@ const PxrCerradosPage = () => {
         const { error } = await supabase
           .from('pxr_cerrados')
           .update({
-            total_pxr_cerrados: parseInt(formData.total_pxr_cerrados.toString()),
-            comentarios: formData.comentarios,
+            total_pxr: parseInt(formData.total_pxr_cerrados.toString()), // Mapeo al campo total_pxr de la BD
+            mejores_cuentas: formData.comentarios, // Mapeo al campo mejores_cuentas de la BD
             updated_at: new Date().toISOString(),
           })
           .eq('id', currentWeek.id);
@@ -211,8 +235,8 @@ const PxrCerradosPage = () => {
               semana: currentWeekDates,
               semana_inicio: currentWeekDates.split(' - ')[0],
               semana_fin: currentWeekDates.split(' - ')[1],
-              total_pxr_cerrados: parseInt(formData.total_pxr_cerrados.toString()),
-              comentarios: formData.comentarios,
+              total_pxr: parseInt(formData.total_pxr_cerrados.toString()), // Mapeo al campo total_pxr de la BD
+              mejores_cuentas: formData.comentarios, // Mapeo al campo mejores_cuentas de la BD
             },
           ]);
 
