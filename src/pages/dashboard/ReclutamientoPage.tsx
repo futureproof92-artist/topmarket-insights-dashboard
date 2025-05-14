@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -109,7 +108,7 @@ const ReclutamientoPage = () => {
         .from('reclutamiento')
         .update(updateData)
         .eq('id', currentWeekData.id)
-        .select('id, reclutamientos_confirmados, freelancers_confirmados',);
+        .select('id, reclutamientos_confirmados, freelancers_confirmados');
       
       if (updateError) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
@@ -178,7 +177,7 @@ const ReclutamientoPage = () => {
     }
   };
   
-  // Refetch data function mejorada
+  // Refetch data function mejorada - CORRIGIENDO EL USO DE SELECT
   const fetchReclutamientoData = async () => {
     setLoading(true);
     setError(null);
@@ -186,7 +185,7 @@ const ReclutamientoPage = () => {
     try {
       console.log("[RECLUTAMIENTO_DEBUG] Loading recruitment data");
       
-      // Get recruitment data from Supabase
+      // Get recruitment data from Supabase - OPTIMIZANDO CAMPOS SELECCIONADOS
       const { data: existingData, error } = await supabase
         .from('reclutamiento')
         .select('id, semana, semana_inicio, semana_fin, reclutamientos_confirmados, freelancers_confirmados, created_at, updated_at')
