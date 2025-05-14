@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -49,7 +50,7 @@ const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
 
 const ReclutamientoPage = () => {
   const { toast } = useToast();
-  const { user, isKarla, isAdmin } = useAuth(); // Usamos el hook mejorado
+  const { user, isKarla, isAdmin, userRole } = useAuth(); // Usamos el hook mejorado
   const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -303,6 +304,12 @@ const ReclutamientoPage = () => {
     return <div>Cargando...</div>;
   }
 
+  // Create an adapted user object matching the expected AppShell structure
+  const appShellUser = {
+    email: user.email || '',
+    role: userRole || 'user'  // Use the role from AuthContext
+  };
+
   const currentWeekLabel = currentWeekData 
     ? formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)
     : "No hay semana seleccionada";
@@ -311,7 +318,7 @@ const ReclutamientoPage = () => {
   const isLastWeek = currentWeekIndex === weeksData.length - 1;
 
   return (
-    <AppShell user={user}>
+    <AppShell user={appShellUser}>
       <div className="space-y-6">
         {/* Week Navigator */}
         <div className="mb-6">
