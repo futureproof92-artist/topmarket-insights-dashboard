@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -50,7 +49,7 @@ const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
 
 const ReclutamientoPage = () => {
   const { toast } = useToast();
-  const { user, isKarla, isAdmin, userRole } = useAuth(); // Usamos el hook mejorado
+  const { user, isKarla, isAdmin } = useAuth(); // Usamos el hook mejorado
   const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -307,7 +306,7 @@ const ReclutamientoPage = () => {
   // Create an adapted user object matching the expected AppShell structure
   const appShellUser = {
     email: user.email || '',
-    role: userRole || 'user'  // Use the role from AuthContext
+    role: isAdmin ? 'admin' : (isKarla ? 'karla' : 'user')  // Determine role based on access flags
   };
 
   const currentWeekLabel = currentWeekData 
