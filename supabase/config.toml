@@ -9,3 +9,8 @@ verify_jwt = false
 reclutamiento_policy = "authenticated"
 # Permitir acceso a los usuarios para ver su propia información
 users_policy = "authenticated"
+
+# Política RLS específica para auth.users
+[auth.users.select]
+policy = "user_can_select_self"
+definition = "id = auth.uid()"

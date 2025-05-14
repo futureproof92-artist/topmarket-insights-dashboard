@@ -101,14 +101,14 @@ const ReclutamientoPage = () => {
         freelancers_confirmados: freelancersValue
       };
       
-      // IMPORTANTE: Actualizamos sin verificar permisos adicionales
+      // IMPORTANTE: Actualizamos con returning: 'minimal' para evitar el SELECT automático
       // Las RLS policies en Supabase se encargarán de la autorización
-      // Utilizamos `returning: 'minimal'` para evitar el SELECT automático
       const { data, error: updateError } = await supabase
         .from('reclutamiento')
         .update(updateData)
         .eq('id', currentWeekData.id)
-        .select('id, reclutamientos_confirmados, freelancers_confirmados');
+        .select('id, reclutamientos_confirmados, freelancers_confirmados')
+        .returns('minimal');
       
       if (updateError) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
