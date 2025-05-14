@@ -109,7 +109,7 @@ const ReclutamientoPage = () => {
         .from('reclutamiento')
         .update(updateData)
         .eq('id', currentWeekData.id)
-        .select('id, reclutamientos_confirmados, freelancers_confirmados', { count: 'exact' });
+        .select('id, reclutamientos_confirmados, freelancers_confirmados',);
       
       if (updateError) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
