@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -103,11 +104,12 @@ const ReclutamientoPage = () => {
       
       // IMPORTANTE: Actualizamos sin verificar permisos adicionales
       // Las RLS policies en Supabase se encargarán de la autorización
+      // Utilizamos `returning: 'minimal'` para evitar el SELECT automático
       const { data, error: updateError } = await supabase
         .from('reclutamiento')
         .update(updateData)
         .eq('id', currentWeekData.id)
-        .select();
+        .select('id, reclutamientos_confirmados, freelancers_confirmados', { count: 'exact' });
       
       if (updateError) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
@@ -157,7 +159,10 @@ const ReclutamientoPage = () => {
         });
 
         // Refrescar los datos desde el servidor para confirmación
-        fetchReclutamientoData();
+        // Utilizamos un timeout para evitar ejecución inmediata tras la actualización
+        setTimeout(() => {
+          fetchReclutamientoData();
+        }, 300);
       }
       
     } catch (error) {
@@ -184,7 +189,7 @@ const ReclutamientoPage = () => {
       // Get recruitment data from Supabase
       const { data: existingData, error } = await supabase
         .from('reclutamiento')
-        .select('*')
+        .select('id, semana, semana_inicio, semana_fin, reclutamientos_confirmados, freelancers_confirmados, created_at, updated_at')
         .order('semana_inicio', { ascending: true });
       
       if (error) {

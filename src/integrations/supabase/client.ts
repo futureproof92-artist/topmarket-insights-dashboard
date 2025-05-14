@@ -29,6 +29,7 @@ export const supabase = createClient<Database>(
     db: {
       schema: 'public'
     },
+    // Configuración que limita a SELECT los campos mínimos para evitar problemas con auth.users
     realtime: {
       headers: {
         'X-Client-Info': 'topmarket-dashboard-app'

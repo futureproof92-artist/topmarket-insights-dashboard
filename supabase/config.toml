@@ -7,3 +7,5 @@ verify_jwt = false
 [auth.policies]
 # Configuración simplificada para acceso a la tabla de reclutamiento
 reclutamiento_policy = "authenticated"
+# Permitir acceso a los usuarios para ver su propia información
+users_policy = "authenticated"
