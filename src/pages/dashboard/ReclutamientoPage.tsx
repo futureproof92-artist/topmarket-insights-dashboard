@@ -101,13 +101,14 @@ const ReclutamientoPage = () => {
         freelancers_confirmados: freelancersValue
       };
       
-      // IMPORTANTE: Actualizamos sin el SELECT automático
+      // IMPORTANTE: Actualizamos sin verificar permisos adicionales
       // Las RLS policies en Supabase se encargarán de la autorización
-      const { error: updateError } = await supabase
+      // Utilizamos `returning: 'minimal'` para evitar el SELECT automático
+      const { data, error: updateError } = await supabase
         .from('reclutamiento')
         .update(updateData)
         .eq('id', currentWeekData.id)
-        .select();
+        .select('id, reclutamientos_confirmados, freelancers_confirmados');
       
       if (updateError) {
         console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
@@ -129,36 +130,39 @@ const ReclutamientoPage = () => {
       }
       
       // Actualizar datos locales
-      const updatedWeeksData = weeksData.map(week => {
-        if (week.id === currentWeekData.id) {
-          return {
-            ...week,
-            reclutamientos_confirmados: reclutamientosValue,
-            freelancers_confirmados: freelancersValue
-          };
-        }
-        return week;
-      });
-      
-      setWeeksData(updatedWeeksData);
-      setCurrentWeekData({
-        ...currentWeekData,
-        reclutamientos_confirmados: reclutamientosValue,
-        freelancers_confirmados: freelancersValue
-      });
-      
-      setError(null);
-      
-      toast({
-        title: "Datos guardados",
-        description: "La información se ha actualizado correctamente"
-      });
+      if (data && data.length > 0) {
+        // Update local data
+        const updatedWeeksData = weeksData.map(week => {
+          if (week.id === currentWeekData.id) {
+            return {
+              ...week,
+              reclutamientos_confirmados: reclutamientosValue,
+              freelancers_confirmados: freelancersValue
+            };
+          }
+          return week;
+        });
+        
+        setWeeksData(updatedWeeksData);
+        setCurrentWeekData({
+          ...currentWeekData,
+          reclutamientos_confirmados: reclutamientosValue,
+          freelancers_confirmados: freelancersValue
+        });
+        
+        setError(null);
+        
+        toast({
+          title: "Datos guardados",
+          description: "La información se ha actualizado correctamente"
+        });
 
-      // Refrescar los datos desde el servidor para confirmación
-      // Utilizamos un timeout para evitar ejecución inmediata tras la actualización
-      setTimeout(() => {
-        fetchReclutamientoData();
-      }, 300);
+        // Refrescar los datos desde el servidor para confirmación
+        // Utilizamos un timeout para evitar ejecución inmediata tras la actualización
+        setTimeout(() => {
+          fetchReclutamientoData();
+        }, 300);
+      }
       
     } catch (error) {
       console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
