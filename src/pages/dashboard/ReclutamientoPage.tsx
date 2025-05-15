@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AppShell } from '@/components/layout/AppShell';
@@ -7,10 +8,11 @@ import { KpiTable } from '@/components/dashboard/KpiTable';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { DateRangeWeekSelector } from '@/components/dashboard/DateRangeWeekSelector';
 import { GenerateWeeksButton } from '@/components/dashboard/GenerateWeeksButton';
+import { useRecruitmentData } from '@/hooks/use-recruitment-data';
+import { useAuth } from '@/hooks/use-auth';
+import { formatWeekLabel } from '@/utils/dateUtils';
 import {
   Card,
   CardHeader,
@@ -20,279 +22,28 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Shield, Info } from "lucide-react";
-import { useAuth } from '@/hooks/use-auth';
-
-// Interfaces for the data
-interface WeeklyRecruitmentData {
-  id?: string;
-  semana: string;
-  semana_inicio: Date;
-  semana_fin: Date;
-  reclutamientos_confirmados: number;
-  freelancers_confirmados: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Reference date: May 7, 2025 (Mexico City Time)
-const CURRENT_DATE = new Date(2025, 4, 7); // May is 4 in JavaScript (0-indexed)
-
-// Format week label function
-const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
-  try {
-    return `Lun ${format(weekStart, "d 'de' MMM", { locale: es })} a Dom ${format(weekEnd, "d 'de' MMM", { locale: es })}`;
-  } catch (error) {
-    console.error("[RECLUTAMIENTO_DEBUG] Error formatting week label:", error);
-    return "Error de formato";
-  }
-};
 
 const ReclutamientoPage = () => {
-  const { toast } = useToast();
-  const { user, isKarla, isAdmin } = useAuth(); // Usamos el hook mejorado
-  const [weeksData, setWeeksData] = useState<WeeklyRecruitmentData[]>([]);
-  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [currentWeekData, setCurrentWeekData] = useState<WeeklyRecruitmentData | null>(null);
-  const [formData, setFormData] = useState({
-    reclutamientos_confirmados: '',
-    freelancers_confirmados: ''
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { 
+    weeksData, 
+    currentWeekIndex, 
+    currentWeekData,
+    loading, 
+    isSaving, 
+    error,
+    formData, 
+    goToPreviousWeek, 
+    goToNextWeek, 
+    handleFormChange, 
+    saveRecruitmentData
+  } = useRecruitmentData();
   
-  // Determine if the user can edit - simplificado, usando el hook useAuth
+  const { user, isKarla, isAdmin } = useAuth();
+  
+  // Determine if the user can edit data
   const canEdit = isKarla || isAdmin;
   
-  // Función de guardar mejorada que NO verifica permisos en cliente
-  const handleSaveData = async () => {
-    if (!currentWeekData?.id) {
-      toast({
-        title: "Error",
-        description: "No hay una semana seleccionada para actualizar",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsSaving(true);
-    setError(null);
-    
-    // Validate numeric input
-    const reclutamientosValue = parseInt(formData.reclutamientos_confirmados);
-    const freelancersValue = parseInt(formData.freelancers_confirmados);
-
-    if (isNaN(reclutamientosValue) || isNaN(freelancersValue) || reclutamientosValue < 0 || freelancersValue < 0) {
-      toast({
-        title: "Error",
-        description: "Los valores deben ser numéricos y no negativos",
-        variant: "destructive"
-      });
-      setIsSaving(false);
-      return;
-    }
-    
-    try {
-      console.log("[RECLUTAMIENTO_DEBUG] Actualizando record:", currentWeekData.id);
-      
-      // Prepare the update object - only include the necessary fields
-      const updateData = {
-        reclutamientos_confirmados: reclutamientosValue,
-        freelancers_confirmados: freelancersValue
-      };
-      
-      // IMPORTANTE: Actualizamos sin verificar permisos adicionales
-      // Las RLS policies en Supabase se encargarán de la autorización
-      // Utilizamos `returning: 'minimal'` para evitar el SELECT automático
-      const { data, error: updateError } = await supabase
-        .from('reclutamiento')
-        .update(updateData)
-        .eq('id', currentWeekData.id)
-        .select('id, reclutamientos_confirmados, freelancers_confirmados');
-      
-      if (updateError) {
-        console.error('[RECLUTAMIENTO_DEBUG] Error updating recruitment data:', updateError);
-        
-        let errorMessage = "No se pudieron guardar los datos";
-        if (updateError.message.includes("permission denied")) {
-          setError("Error de permisos: " + updateError.message);
-          errorMessage = "Error de permisos de base de datos. Por favor, contacta al administrador.";
-        } else {
-          setError(`Error: ${updateError.message}`);
-        }
-        
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Actualizar datos locales
-      if (data && data.length > 0) {
-        // Update local data
-        const updatedWeeksData = weeksData.map(week => {
-          if (week.id === currentWeekData.id) {
-            return {
-              ...week,
-              reclutamientos_confirmados: reclutamientosValue,
-              freelancers_confirmados: freelancersValue
-            };
-          }
-          return week;
-        });
-        
-        setWeeksData(updatedWeeksData);
-        setCurrentWeekData({
-          ...currentWeekData,
-          reclutamientos_confirmados: reclutamientosValue,
-          freelancers_confirmados: freelancersValue
-        });
-        
-        setError(null);
-        
-        toast({
-          title: "Datos guardados",
-          description: "La información se ha actualizado correctamente"
-        });
-
-        // Refrescar los datos desde el servidor para confirmación
-        // Utilizamos un timeout para evitar ejecución inmediata tras la actualización
-        setTimeout(() => {
-          fetchReclutamientoData();
-        }, 300);
-      }
-      
-    } catch (error) {
-      console.error('[RECLUTAMIENTO_DEBUG] Error in handleSaveData:', error);
-      setError(`Error inesperado: ${error instanceof Error ? error.message : 'Desconocido'}`);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar los datos",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  
-  // Refetch data function mejorada - CORRIGIENDO EL USO DE SELECT
-  const fetchReclutamientoData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      console.log("[RECLUTAMIENTO_DEBUG] Loading recruitment data");
-      
-      // Get recruitment data from Supabase - OPTIMIZANDO CAMPOS SELECCIONADOS
-      const { data: existingData, error } = await supabase
-        .from('reclutamiento')
-        .select('id, semana, semana_inicio, semana_fin, reclutamientos_confirmados, freelancers_confirmados, created_at, updated_at')
-        .order('semana_inicio', { ascending: true });
-      
-      if (error) {
-        console.error('[RECLUTAMIENTO_DEBUG] Error fetching recruitment data:', error);
-        setError(`Error cargando datos: ${error.message}`);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los datos de reclutamiento",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Process and set the weeks data
-      if (existingData && existingData.length > 0) {
-        console.log("[RECLUTAMIENTO_DEBUG] Data found:", existingData.length);
-        
-        const weeksList = existingData.map(week => ({
-          ...week,
-          semana_inicio: new Date(week.semana_inicio),
-          semana_fin: new Date(week.semana_fin)
-        }));
-        
-        setWeeksData(weeksList);
-        
-        // Find the current week (closest to today)
-        const currentDate = CURRENT_DATE;
-        let closestIndex = 0;
-        let smallestDiff = Infinity;
-        
-        weeksList.forEach((week, index) => {
-          const diff = Math.abs(week.semana_inicio.getTime() - currentDate.getTime());
-          if (diff < smallestDiff) {
-            smallestDiff = diff;
-            closestIndex = index;
-          }
-        });
-        
-        setCurrentWeekIndex(closestIndex);
-        
-        const selectedWeek = weeksList[closestIndex];
-        setCurrentWeekData(selectedWeek);
-        
-        setFormData({
-          reclutamientos_confirmados: String(selectedWeek?.reclutamientos_confirmados || 0),
-          freelancers_confirmados: String(selectedWeek?.freelancers_confirmados || 0)
-        });
-      } else {
-        console.log("[RECLUTAMIENTO_DEBUG] No data found");
-        setWeeksData([]);
-      }
-    } catch (error) {
-      console.error('[RECLUTAMIENTO_DEBUG] Error in fetchReclutamientoData:', error);
-      setError(`Error inesperado: ${error instanceof Error ? error.message : 'Desconocido'}`);
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al cargar los datos",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Fetch data when component mounts
-  useEffect(() => {
-    fetchReclutamientoData();
-  }, [toast]);
-  
-  // Navigate to previous week
-  const goToPreviousWeek = () => {
-    if (currentWeekIndex > 0) {
-      const newIndex = currentWeekIndex - 1;
-      setCurrentWeekIndex(newIndex);
-      const selectedWeek = weeksData[newIndex];
-      setCurrentWeekData(selectedWeek);
-      setFormData({
-        reclutamientos_confirmados: String(selectedWeek.reclutamientos_confirmados || 0),
-        freelancers_confirmados: String(selectedWeek.freelancers_confirmados || 0)
-      });
-    }
-  };
-  
-  // Navigate to next week
-  const goToNextWeek = () => {
-    if (currentWeekIndex < weeksData.length - 1) {
-      const newIndex = currentWeekIndex + 1;
-      setCurrentWeekIndex(newIndex);
-      const selectedWeek = weeksData[newIndex];
-      setCurrentWeekData(selectedWeek);
-      setFormData({
-        reclutamientos_confirmados: String(selectedWeek.reclutamientos_confirmados || 0),
-        freelancers_confirmados: String(selectedWeek.freelancers_confirmados || 0)
-      });
-    }
-  };
-  
-  // Handle form changes
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  
-  // Prepare chart data
+  // Create chart data for visualization
   const recruitmentChartData = weeksData
     .slice(Math.max(0, weeksData.length - 12))
     .map(week => ({
@@ -302,7 +53,7 @@ const ReclutamientoPage = () => {
     }))
     .reverse();
 
-  // UI para cuando no hay usuario
+  // Loading state
   if (!user) {
     return <div>Cargando...</div>;
   }
@@ -310,14 +61,15 @@ const ReclutamientoPage = () => {
   // Create an adapted user object matching the expected AppShell structure
   const appShellUser = {
     email: user.email || '',
-    role: isAdmin ? 'admin' : (isKarla ? 'karla' : 'user')  // Determine role based on access flags
+    role: isAdmin ? 'admin' : (isKarla ? 'karla' : 'user')
   };
 
+  // Current week label for display
   const currentWeekLabel = currentWeekData 
     ? formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)
     : "No hay semana seleccionada";
 
-  // Verificar si estamos en la última semana
+  // Check if we're at the last available week
   const isLastWeek = currentWeekIndex === weeksData.length - 1;
 
   return (
@@ -337,7 +89,7 @@ const ReclutamientoPage = () => {
           {/* Admin controls for generating future weeks */}
           {isAdmin && isLastWeek && (
             <div className="mt-4">
-              <GenerateWeeksButton onSuccess={fetchReclutamientoData} />
+              <GenerateWeeksButton onSuccess={() => {}} />
             </div>
           )}
           
@@ -395,14 +147,14 @@ const ReclutamientoPage = () => {
                 />
               </div>
               <Button 
-                onClick={handleSaveData} 
+                onClick={saveRecruitmentData} 
                 className="mt-4"
                 disabled={loading || isSaving || !currentWeekData}
               >
                 {isSaving ? 'Guardando...' : 'Guardar'}
               </Button>
               
-              {/* Debug info - solo para desarrollo */}
+              {/* Debug info - only for admin */}
               {isAdmin && (
                 <div className="mt-4 p-3 bg-slate-100 rounded-md text-xs text-slate-600">
                   <p>Debug info (sólo admin):</p>
@@ -411,6 +163,8 @@ const ReclutamientoPage = () => {
                   <p>Is Admin: {isAdmin ? 'Yes' : 'No'}</p>
                   <p>Can Edit: {canEdit ? 'Yes' : 'No'}</p>
                   <p>Current Week ID: {currentWeekData?.id}</p>
+                  <p>Total Weeks: {weeksData.length}</p>
+                  <p>Current Week Index: {currentWeekIndex}</p>
                 </div>
               )}
             </div>
@@ -440,7 +194,7 @@ const ReclutamientoPage = () => {
           </Card>
         </div>
         
-        {/* Admin View */}
+        {/* Admin View - Charts and Tables */}
         {isAdmin && !isKarla && (
           <>
             <ChartContainer
