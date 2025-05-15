@@ -6,30 +6,30 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://wpsaktihetvpbykawvxl.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indwc2FrdGloZXR2cGJ5a2F3dnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyMjM5NTcsImV4cCI6MjA2MTc5OTk1N30.WNkVhcE-kMqWfZR6oGwTZ1-eqheHTIz8at4nZKS3618";
 
-// Creamos el cliente de Supabase con configuración óptima de sesión y autenticación
+// Create the Supabase client with optimal session and authentication configuration
 export const supabase = createClient<Database>(
   SUPABASE_URL, 
   SUPABASE_PUBLISHABLE_KEY,
   {
     auth: {
       persistSession: true,
-      // Aseguramos que se use el localStorage para almacenar la sesión
+      // Ensure localStorage is used for session storage
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      // Configuraciones para un manejo correcto de tokens JWT
+      // Configuration for proper JWT token handling
       autoRefreshToken: true,
       detectSessionInUrl: true
     },
     global: {
-      // Añadimos headers para mejorar el debugging y seguimiento
+      // Add headers for improved debugging and tracking
       headers: {
         'X-Client-Info': 'topmarket-dashboard-app'
       }
     },
-    // Configuración para fijar las URLs base correctas
+    // Configuration to set the correct base URLs
     db: {
       schema: 'public'
     },
-    // Configuración mejorada para limitar campos seleccionados y evitar problemas con auth.users
+    // Improved configuration to limit selected fields and avoid auth.users issues
     realtime: {
       headers: {
         'X-Client-Info': 'topmarket-dashboard-app'
@@ -38,7 +38,7 @@ export const supabase = createClient<Database>(
   }
 );
 
-// Función de utilidad para verificar derechos de acceso basado ÚNICAMENTE en el JWT
+// Utility function to check access rights based ONLY on the JWT
 export const checkUserAccess = async () => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -47,11 +47,11 @@ export const checkUserAccess = async () => {
       return { accessGranted: false };
     }
     
-    // IMPORTANTE: Solo utilizamos el email del JWT para determinar permisos
-    // Eliminamos cualquier consulta a auth.users que podría causar errores de permisos
+    // IMPORTANT: Only use the email from JWT to determine permissions
+    // Remove any query to auth.users that could cause permission errors
     const userEmail = session.user.email?.toLowerCase() || '';
     
-    // Verificación simplificada basada ÚNICAMENTE en el email (que está en el JWT)
+    // Simplified verification based ONLY on email (which is in the JWT)
     const isKarla = userEmail.includes('reclutamiento') || 
                     userEmail.includes('karla.casillas');
                     

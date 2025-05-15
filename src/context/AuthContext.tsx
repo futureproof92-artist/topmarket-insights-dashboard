@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSessionValid, setIsSessionValid] = useState(false);
   const { toast } = useToast();
 
-  // Determinar role basado en el email
+  // Determine role based on the email
   const determineRoleFromEmail = (email: string): string => {
     if (!email) return 'user';
     
@@ -50,7 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'user';
   };
 
-  // Sincronizar el estado del usuario con localStorage para mantener compatibilidad
+  // Clean up any stale auth state from localStorage
+  const cleanupAuthState = () => {
+    // Remove all Supabase auth keys from localStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+  };
+
+  // Synchronize the state of the user with localStorage for maintaining compatibility
   const syncUserToLocalStorage = (currentUser: User | null, currentSession: Session | null) => {
     if (!currentUser) {
       localStorage.removeItem('user');
@@ -68,9 +78,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('user', JSON.stringify(userData));
     setUserRole(role);
 
-    // Log JWT token para diagnóstico
+    // Log JWT token for diagnostic
     if (currentSession) {
-      const createdAt = new Date().toLocaleString(); // Fallback para created_at
+      const createdAt = new Date().toLocaleString(); // Fallback for created_at
       console.log("[AUTH_DEBUG] Token JWT disponible:", !!currentSession.access_token);
       console.log("[AUTH_DEBUG] Estado del token:", {
         emitido: createdAt,
@@ -82,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Nueva función centralizada para validar sesiones JWT
+  // New centralized function to validate JWT sessions
   const validateSession = async (): Promise<boolean> => {
     console.log("[AUTH_DEBUG] Iniciando validación centralizada de sesión JWT");
     
@@ -92,14 +102,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     
-    // Verificamos que el token sea válido
+    // Verify that the token is valid
     if (!session.access_token || !session.access_token.startsWith("ey")) {
       console.log("[AUTH_DEBUG] ⚠️ Token JWT inválido detectado");
       setIsSessionValid(false);
       return false;
     }
     
-    // Verificamos si el token ha expirado
+    // Verify if the token has expired
     const tokenExpiration = session.expires_at * 1000;
     const timeRemaining = Math.round((tokenExpiration - Date.now())/60000);
     
@@ -116,10 +126,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
     
-    // Si estamos a menos de 10 minutos de expirar, advertimos pero aún es válido
+    // If we are less than 10 minutes from expiring, we warn but it's still valid
     if (timeRemaining < 10) {
       console.log("[AUTH_DEBUG] ⚠️ Token JWT a punto de expirar");
-      // La sesión sigue siendo válida, solo advertimos
+      // Session is still valid, just warning
     }
     
     setIsSessionValid(true);
@@ -127,12 +137,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Configuración inicial para resolver la sesión
+    // Initial setup to resolve the session
     const setupAuth = async () => {
       try {
         console.log("[AUTH_DEBUG] Iniciando configuración de autenticación");
         
-        // Intentar recuperar la sesión primero para evitar flashes de UI
+        // Clean up any stale auth state first
+        cleanupAuthState();
+        
+        // Try to recover the session first to avoid UI flashes
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         console.log("[AUTH_DEBUG] Sesión inicial:", existingSession ? "Encontrada" : "No encontrada");
         
@@ -147,11 +160,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           syncUserToLocalStorage(existingSession.user, existingSession);
           console.log("[AUTH_DEBUG] Rol establecido:", role);
           
-          // Validamos la sesión inmediatamente
+          // Validate the session immediately
           await validateSession();
         }
         
-        // Establece el listener para cambios de autenticación
+        // Set up the listener for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, currentSession) => {
             console.log("[AUTH_DEBUG] Cambio en estado de autenticación:", event);
@@ -167,7 +180,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               syncUserToLocalStorage(currentSession.user, currentSession);
               console.log("[AUTH_DEBUG] Nuevo rol tras cambio de estado:", role);
               
-              // Validamos la sesión automáticamente tras cada cambio
+              // Validate the session automatically after each change
               await validateSession();
             } else {
               setSession(null);
@@ -180,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         );
         
-        // Es importante finalizar loading incluso si no hay sesión
+        // Important to end loading even if there is no session
         setAuthInitialized(true);
         setLoading(false);
         console.log("[AUTH_DEBUG] Autenticación inicializada, loading:", false);
@@ -190,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       } catch (error) {
         console.error("[AUTH_DEBUG] Error crítico durante inicialización de autenticación:", error);
-        // Asegurarse de que loading sea false incluso con errores
+        // Ensure loading is false even with errors
         setLoading(false);
         setAuthInitialized(true);
         setIsSessionValid(false);
@@ -204,6 +217,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("[AUTH_DEBUG] Intentando iniciar sesión con:", email);
     
     try {
+      // Clean up existing auth state first
+      cleanupAuthState();
+      
+      // Attempt global sign out to ensure clean state
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch (err) {
+        // Continue even if this fails
+      }
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -240,17 +263,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("[AUTH_DEBUG] ✅ Sesión establecida correctamente");
       
-      // Determinar el rol del usuario
+      // Determine user role
       const role = data.user.user_metadata?.role || determineRoleFromEmail(email);
       
-      // Actualizar metadata del usuario con el rol (importante para JWT claims)
+      // Update user metadata with role (important for JWT claims)
       await supabase.auth.updateUser({
         data: { role }
       });
       
       console.log("[AUTH_DEBUG] Role actualizado en los metadatos del usuario:", role);
       
-      // Guardar información en localStorage para compatibilidad
+      // Save information in localStorage for compatibility
       const userData = {
         id: data.user.id,
         email: data.user.email,
@@ -260,7 +283,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('user', JSON.stringify(userData));
       setUserRole(role);
       
-      // Validamos la nueva sesión
+      // Validate the new session
       await validateSession();
       
       toast({
@@ -294,14 +317,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     console.log("[AUTH_DEBUG] Cerrando sesión - Eliminando token JWT");
     try {
-      // Limpiar localStorage primero por si hay problemas con Supabase
-      localStorage.removeItem('user');
-      localStorage.removeItem('impersonatedRole');
+      // Clean localStorage first in case there's an issue with Supabase
+      cleanupAuthState();
       
-      // Intentar cerrar sesión con Supabase
+      // Try to sign out with Supabase
       await supabase.auth.signOut();
       
-      // Actualizar el estado después de cerrar sesión
+      // Update state after signing out
       setUserRole(null);
       setUser(null);
       setSession(null);
@@ -319,7 +341,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error("[AUTH_DEBUG] Error al cerrar sesión:", error);
       
-      // En caso de error, asegurar que se limpia el estado local
+      // In case of error, ensure local state is cleared
       setUserRole(null);
       setUser(null);
       setSession(null);
@@ -331,7 +353,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive"
       });
       
-      // Resolver la promesa incluso si hay error para no bloquear la redirección
+      // Resolve the promise even if there's an error to avoid blocking redirection
       return Promise.resolve();
     }
   };
