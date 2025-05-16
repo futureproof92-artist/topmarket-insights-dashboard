@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -158,19 +157,17 @@ export const useRecruitmentData = () => {
     try {
       console.log("[RECRUITMENT_HOOK] Updating record:", currentWeekData.id);
       
-      // Prepare the update object
+      // Prepare the update object - only include the fields we want to update
       const updateData = {
         reclutamientos_confirmados: reclutamientosValue,
         freelancers_confirmados: freelancersValue
       };
       
-      // Update data using upsert to handle both insert and update cases
+      // Update data using update() with eq() filter instead of upsert with id inside the object
       const { data, error: updateError } = await supabase
         .from('reclutamiento')
-        .upsert({
-          id: currentWeekData.id,
-          ...updateData
-        })
+        .update(updateData)
+        .eq('id', currentWeekData.id)
         .select('id, reclutamientos_confirmados, freelancers_confirmados');
       
       if (updateError) {
