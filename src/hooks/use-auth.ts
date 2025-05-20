@@ -13,15 +13,21 @@ export const useAuth = () => {
   const isKarla = userEmail.includes('reclutamiento') || 
                  userEmail.includes('karla.casillas');
   
+  const isDavila = userEmail.includes('rys_cdmx') || 
+                  userEmail.includes('davila');
+  
   const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
   
-  // Verificar acceso específico a la sección de reclutamiento
+  // Verificar acceso específico a secciones
   const hasReclutamientoAccess = isKarla || isAdmin;
+  const hasPxrAccess = isDavila || isAdmin;
   
   return {
     ...authContext,
     isKarla,
+    isDavila,
     isAdmin,
-    hasReclutamientoAccess
+    hasReclutamientoAccess,
+    hasPxrAccess
   };
 };
