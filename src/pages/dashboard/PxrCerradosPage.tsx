@@ -37,14 +37,14 @@ const PxrCerradosPage = () => {
     savePxrCerradosData
   } = usePxrCerradosData();
 
-  // Obtener información del usuario actual
-  const { user } = useAuth();
+  // Obtener información del usuario actual y sus permisos
+  const { user, isDavila, isAdmin, hasPxrAccess } = useAuth();
   
-  // Determinar si el usuario actual es Davila
-  const userEmail = user?.email?.toLowerCase() || '';
-  const isDavila = userEmail.includes('rys_cdmx') || userEmail.includes('davila');
-  const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
-  const hasEditPermission = isDavila || isAdmin;
+  // Transformar el objeto user al formato esperado por AppShell
+  const appShellUser = user ? {
+    role: user.role || user.user_metadata?.role || 'user', // Ensure role is defined
+    email: user.email || ''
+  } : undefined;
 
   // Preparar datos para el gráfico
   const chartData = weeksData.map(week => ({
@@ -58,7 +58,7 @@ const PxrCerradosPage = () => {
     : "Cargando...";
 
   return (
-    <AppShell user={user}>
+    <AppShell user={appShellUser}>
       <div className="space-y-6">
         {/* Selector de semanas */}
         <DateRangeWeekSelector
@@ -71,7 +71,7 @@ const PxrCerradosPage = () => {
         />
         
         {/* Formulario de edición (solo visible para usuarios autorizados) */}
-        {hasEditPermission && (
+        {hasPxrAccess && (
           <Card>
             <CardHeader>
               <CardTitle>Registro de PXRs cerrados</CardTitle>
