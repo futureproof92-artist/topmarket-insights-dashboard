@@ -22,6 +22,9 @@ export const DateRangeWeekSelector = ({
 }: DateRangeWeekSelectorProps) => {
   // Verificar si estamos en la última semana
   const isLastWeek = currentIndex >= totalWeeks - 1;
+  
+  // Debug info
+  console.log("[DATE_SELECTOR] Propiedades:", { currentIndex, totalWeeks, currentWeekLabel, loading, isLastWeek });
 
   return (
     <div className="flex justify-between items-center bg-white p-4 rounded-lg border shadow-sm">
@@ -38,6 +41,8 @@ export const DateRangeWeekSelector = ({
       <div className="text-center px-4 py-2 min-w-[200px]">
         {loading ? (
           <span className="text-lg font-semibold">Cargando semanas...</span>
+        ) : totalWeeks === 0 ? (
+          <span className="text-lg font-semibold">No hay semanas disponibles</span>
         ) : (
           <>
             <h2 className="text-lg font-bold">{currentWeekLabel}</h2>

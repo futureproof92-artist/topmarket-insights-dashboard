@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { ChartContainer } from '@/components/dashboard/ChartContainer';
 import { 
@@ -22,6 +22,8 @@ import { usePxrCerradosData } from '@/hooks/use-pxr-cerrados-data';
 import { useAuth } from '@/hooks/use-auth';
 
 const PxrCerradosPage = () => {
+  const { toast } = useToast();
+  
   // Usar el hook personalizado para manejar los datos de PXR cerrados
   const {
     weeksData,
@@ -34,11 +36,26 @@ const PxrCerradosPage = () => {
     goToPreviousWeek,
     goToNextWeek,
     handleFormChange,
-    savePxrCerradosData
+    savePxrCerradosData,
+    fetchPxrCerradosData
   } = usePxrCerradosData();
 
   // Obtener información del usuario actual y sus permisos
   const { user, isDavila, isAdmin, hasPxrAccess } = useAuth();
+  
+  // Añadir console logs para debugging
+  useEffect(() => {
+    console.log("[PXR_PAGE] Estado inicial:", {
+      weeksDataLength: weeksData.length,
+      currentWeekIndex,
+      currentWeekData: currentWeekData ? {
+        semana: currentWeekData.semana,
+        id: currentWeekData.id
+      } : null,
+      loading,
+      error
+    });
+  }, [weeksData, currentWeekIndex, currentWeekData, loading, error]);
   
   // Transformar el objeto user al formato esperado por AppShell
   const appShellUser = user ? {
@@ -56,6 +73,14 @@ const PxrCerradosPage = () => {
   const currentWeekLabel = currentWeekData 
     ? formatWeekLabel(currentWeekData.semana_inicio, currentWeekData.semana_fin)
     : "Cargando...";
+  
+  // Verificar si hay datos antes de renderizar
+  useEffect(() => {
+    if (!loading && weeksData.length === 0) {
+      console.log("[PXR_PAGE] No hay datos de semanas disponibles. Intentando cargar nuevamente...");
+      fetchPxrCerradosData();
+    }
+  }, [loading, weeksData, fetchPxrCerradosData]);
 
   return (
     <AppShell user={appShellUser}>

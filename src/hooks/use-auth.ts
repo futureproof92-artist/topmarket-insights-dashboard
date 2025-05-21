@@ -9,6 +9,12 @@ export const useAuth = () => {
   // Obtener el email para verificaciones directas
   const userEmail = authContext.user?.email?.toLowerCase() || '';
   
+  // Debug
+  console.log("[AUTH_HOOK] Usuario actual:", { 
+    email: userEmail, 
+    role: authContext.user?.role || authContext.user?.user_metadata?.role || 'user'
+  });
+  
   // Verificación mejorada de permisos basada en el email directamente
   const isKarla = userEmail.includes('reclutamiento') || 
                  userEmail.includes('karla.casillas');

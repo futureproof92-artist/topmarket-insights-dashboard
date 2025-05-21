@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { findCurrentWeek, initWeeks2025 } from '@/utils/dateUtils';
@@ -29,7 +29,7 @@ export const usePxrCerradosData = () => {
   });
 
   // Función para cargar todos los datos de PXR cerrados
-  const fetchPxrCerradosData = async () => {
+  const fetchPxrCerradosData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -37,7 +37,21 @@ export const usePxrCerradosData = () => {
       console.log("[PXR_HOOK] Cargando datos de PXR cerrados");
       
       // Primero verificamos si necesitamos inicializar las semanas
-      await initWeeks2025();
+      const initSuccess = await initWeeks2025();
+      console.log("[PXR_HOOK] Inicialización de semanas:", initSuccess ? "Exitosa" : "No necesaria");
+      
+      // Obtenemos las semanas base primero desde reclutamiento
+      // Esto sirve como respaldo para asegurarnos de tener todas las semanas
+      const { data: semanas, error: semanasError } = await supabase
+        .from('reclutamiento')
+        .select('id, semana, semana_inicio, semana_fin')
+        .order('semana_inicio', { ascending: true });
+        
+      if (semanasError) {
+        console.error('[PXR_HOOK] Error al cargar semanas base:', semanasError);
+      } else {
+        console.log("[PXR_HOOK] Semanas base encontradas:", semanas?.length || 0);
+      }
       
       // Obtenemos los datos de PXR cerrados de Supabase
       const { data: existingData, error } = await supabase
@@ -56,6 +70,73 @@ export const usePxrCerradosData = () => {
         return;
       }
       
+      // Si no hay datos de PXR, inicializamos con las semanas base
+      if (!existingData || existingData.length === 0) {
+        if (semanas && semanas.length > 0) {
+          console.log("[PXR_HOOK] No hay datos de PXR, inicializando con semanas base...");
+          
+          // Preparar datos para inserción
+          const pxrDataToInsert = semanas.map(week => ({
+            semana: week.semana,
+            semana_inicio: week.semana_inicio,
+            semana_fin: week.semana_fin,
+            total_pxr: 0,
+            mejores_cuentas: ''
+          }));
+          
+          // Insertar datos base
+          const { data: insertedData, error: insertError } = await supabase
+            .from('pxr_cerrados')
+            .insert(pxrDataToInsert)
+            .select();
+            
+          if (insertError) {
+            console.error('[PXR_HOOK] Error al inicializar datos de PXR:', insertError);
+            toast({
+              title: "Error",
+              description: "No se pudieron inicializar los datos de PXR cerrados",
+              variant: "destructive"
+            });
+          } else {
+            console.log("[PXR_HOOK] Datos de PXR inicializados correctamente");
+            
+            // Recargar datos desde la base de datos
+            const { data: freshData } = await supabase
+              .from('pxr_cerrados')
+              .select('id, semana, semana_inicio, semana_fin, total_pxr, mejores_cuentas')
+              .order('semana_inicio', { ascending: true });
+              
+            if (freshData && freshData.length > 0) {
+              const weeksList = freshData.map(week => ({
+                ...week,
+                semana_inicio: new Date(week.semana_inicio),
+                semana_fin: new Date(week.semana_fin),
+                total_pxr_cerrados: week.total_pxr || 0,
+                mejores_cuentas: week.mejores_cuentas || ''
+              }));
+              
+              setWeeksData(weeksList);
+              
+              // Encontramos la semana actual (basada en la fecha de hoy)
+              const currentDate = new Date();
+              const closestIndex = findCurrentWeek(weeksList, currentDate);
+              
+              setCurrentWeekIndex(closestIndex);
+              
+              const selectedWeek = weeksList[closestIndex];
+              setCurrentWeekData(selectedWeek);
+              
+              setFormData({
+                total_pxr_cerrados: String(selectedWeek?.total_pxr_cerrados || 0),
+                mejores_cuentas: selectedWeek?.mejores_cuentas || ''
+              });
+              
+              return;
+            }
+          }
+        }
+      }
+      
       // Procesamos y establecemos los datos de las semanas
       if (existingData && existingData.length > 0) {
         console.log("[PXR_HOOK] Datos encontrados:", existingData.length);
@@ -64,7 +145,7 @@ export const usePxrCerradosData = () => {
           ...week,
           semana_inicio: new Date(week.semana_inicio),
           semana_fin: new Date(week.semana_fin),
-          total_pxr_cerrados: week.total_pxr, // Mapear de 'total_pxr' a 'total_pxr_cerrados'
+          total_pxr_cerrados: week.total_pxr || 0, // Mapear de 'total_pxr' a 'total_pxr_cerrados'
           mejores_cuentas: week.mejores_cuentas || ''
         }));
         
@@ -73,6 +154,7 @@ export const usePxrCerradosData = () => {
         // Encontramos la semana actual (basada en la fecha de hoy)
         const currentDate = new Date();
         const closestIndex = findCurrentWeek(weeksList, currentDate);
+        console.log("[PXR_HOOK] Índice de semana actual:", closestIndex, "de", weeksList.length);
         
         setCurrentWeekIndex(closestIndex);
         
@@ -98,11 +180,12 @@ export const usePxrCerradosData = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   // Navegar a una semana específica por índice
   const goToWeek = (index: number) => {
     if (index >= 0 && index < weeksData.length) {
+      console.log("[PXR_HOOK] Navegando a semana:", index);
       setCurrentWeekIndex(index);
       const selectedWeek = weeksData[index];
       setCurrentWeekData(selectedWeek);
@@ -241,7 +324,7 @@ export const usePxrCerradosData = () => {
   // Inicializar datos cuando el componente se monta
   useEffect(() => {
     fetchPxrCerradosData();
-  }, []);
+  }, [fetchPxrCerradosData]);
 
   return {
     weeksData,
