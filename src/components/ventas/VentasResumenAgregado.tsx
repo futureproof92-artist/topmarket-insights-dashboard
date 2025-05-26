@@ -22,6 +22,8 @@ interface LeadsData {
 
 interface HistorialItem {
   semana: string;
+  fecha_inicio: string;
+  fecha_fin: string;
   leads: LeadsData;
   ventasDetalle: VentaDetalle[];
   id?: string;
@@ -67,41 +69,22 @@ export const VentasResumenAgregado = ({
   }, [dateRange, historial.length]);
 
   // Función para determinar si una semana está dentro del rango de fechas seleccionado
-  const isWeekInDateRange = (semana: string) => {
+  const isWeekInDateRange = (item: HistorialItem) => {
     if (!dateRange?.from) return true; // Si no hay rango seleccionado, mostrar todo
-    
+
     try {
-      // Extraer las fechas de la cadena "Lun 21 de Abr 2025 – Vie 25 de Abr 2025"
-      const [startDateStr, endDateStr] = semana.split('–').map(s => s.trim());
+      const itemStartDate = parseISO(item.fecha_inicio);
+      const itemEndDate = parseISO(item.fecha_fin);
       
-      // Parsear la fecha de inicio de la semana (formato: "Lun 21 de Abr 2025")
-      const startDay = parseInt(startDateStr.split(' ')[1]);
-      const startMonth = startDateStr.split(' ')[3];
-      const startYear = parseInt(startDateStr.split(' ')[4]);
-      
-      // Crear un objeto Date para la fecha de inicio de la semana
-      const monthMap: Record<string, number> = {
-        'Ene': 0, 'Feb': 1, 'Mar': 2, 'Abr': 3, 'May': 4, 'Jun': 5, 
-        'Jul': 6, 'Ago': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dic': 11
-      };
-      
-      const startDate = new Date(startYear, monthMap[startMonth], startDay);
-      
-      // Para la fecha de fin, hacemos algo similar
-      const endDay = parseInt(endDateStr.split(' ')[1]);
-      const endMonth = endDateStr.split(' ')[3];
-      const endYear = parseInt(endDateStr.split(' ')[4]);
-      
-      const endDate = new Date(endYear, monthMap[endMonth], endDay);
-      
-      // Verificar si hay intersección entre el rango de la semana y el rango seleccionado
-      const rangeEnd = dateRange.to || dateRange.from;
-      
+      const rangeStartDate = dateRange.from;
+      const rangeEndDate = dateRange.to || dateRange.from; // Si dateRange.to no está definido, usa dateRange.from
+
       // Comprobar si hay alguna superposición entre los rangos
-      return !(endDate < dateRange.from || startDate > rangeEnd);
-      
+      // (range1Start <= range2End) && (range2Start <= range1End)
+      return itemStartDate <= rangeEndDate && rangeStartDate <= itemEndDate;
+
     } catch (error) {
-      console.error("Error al parsear fecha de semana:", semana, error);
+      // console.error("Error al parsear fecha de semana:", item.semana, error); // Log removed
       return true; // En caso de error, incluir la semana
     }
   };
@@ -124,18 +107,12 @@ export const VentasResumenAgregado = ({
 
     // Acumular todas las ventas
     const todasLasVentas: VentaDetalle[] = [];
-
-    // Logging para depuración
-    console.log("Filtrando datos por rango de fecha:", dateRange);
-    console.log("Datos históricos disponibles:", historial.length, "semanas");
     
     // Filtrar el historial según el rango de fechas
     const historialFiltrado = dateRange?.from 
-      ? historial.filter(item => isWeekInDateRange(item.semana))
+      ? historial.filter(item => isWeekInDateRange(item))
       : historial;
       
-    console.log("Semanas después de filtrar:", historialFiltrado.length);
-    
     historialFiltrado.forEach(item => {
       // Sumar leads
       totalLeads.leads_pub_em += item.leads.leads_pub_em;
@@ -306,12 +283,15 @@ export const VentasResumenAgregado = ({
                 <TableCell className="font-medium">
                   Contar clientes: {datosAgregados.clientCount}
                 </TableCell>
-                <TableCell colSpan={3}></TableCell>
+                <TableCell colSpan={2}></TableCell> {/* Adjusted colSpan */}
                 <TableCell className="font-medium">
                   Promedio costo: ${datosAgregados.avgCost.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                 </TableCell>
-                <TableCell className="font-medium text-right" colSpan={2}>
+                <TableCell className="font-medium text-right"> {/* Adjusted colSpan and alignment */}
                   Sumar vacantes: {datosAgregados.totalVacancies}
+                </TableCell>
+                <TableCell className="font-medium text-right" colSpan={2}> {/* New cell for totalVentas */}
+                  Total Ventas: {datosAgregados.totalVentas.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}
                 </TableCell>
               </TableRow>
             </TableBody>

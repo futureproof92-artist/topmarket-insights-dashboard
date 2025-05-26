@@ -14,7 +14,6 @@ export const formatWeekLabel = (weekStart: Date, weekEnd: Date) => {
   try {
     return `Lun ${format(weekStart, "d 'de' MMM", { locale: es })} a Dom ${format(weekEnd, "d 'de' MMM", { locale: es })}`;
   } catch (error) {
-    console.error("[DATE_UTILS] Error formatting week label:", error);
     return "Error de formato";
   }
 };
@@ -51,7 +50,9 @@ export const generateWeeksForYear = (year: number): WeekData[] => {
 
 // Find the current week in a list of weeks
 export const findCurrentWeek = (weeks: WeekData[], referenceDate: Date = new Date()): number => {
-  let currentWeekIndex = 0;
+  if (!weeks || weeks.length === 0) {
+    return -1;
+  }
   
   // Find the week that contains the reference date
   for (let i = 0; i < weeks.length; i++) {
@@ -59,16 +60,15 @@ export const findCurrentWeek = (weeks: WeekData[], referenceDate: Date = new Dat
     const end = new Date(weeks[i].semana_fin);
     
     if (isWithinInterval(referenceDate, { start, end })) {
-      currentWeekIndex = i;
-      break;
+      return i;
     }
   }
   
-  return currentWeekIndex;
+  return -1; // Return -1 if no week is found
 };
 
 // Initialize weeks in the database if they don't exist
-export const initWeeks2025 = async (): Promise<boolean> => {
+export const initWeeks = async (year: number): Promise<boolean> => {
   try {
     // First check if we already have weeks in the database
     const { data: existingWeeks, error: checkError } = await supabase
@@ -77,18 +77,16 @@ export const initWeeks2025 = async (): Promise<boolean> => {
       .limit(1);
     
     if (checkError) {
-      console.error("[DATE_UTILS] Error checking for existing weeks:", checkError);
       return false;
     }
     
     // If weeks exist, don't initialize
     if (existingWeeks && existingWeeks.length > 0) {
-      console.log("[DATE_UTILS] Weeks already initialized, skipping");
       return true;
     }
     
-    // Generate weeks for 2025
-    const weeks = generateWeeksForYear(2025);
+    // Generate weeks for the specified year
+    const weeks = generateWeeksForYear(year);
     
     // Prepare data for insertion
     const weekData = weeks.map(week => ({
@@ -105,14 +103,11 @@ export const initWeeks2025 = async (): Promise<boolean> => {
       .insert(weekData);
     
     if (insertError) {
-      console.error("[DATE_UTILS] Failed to initialize weeks:", insertError);
       return false;
     }
     
-    console.log("[DATE_UTILS] Successfully initialized 2025 weeks");
     return true;
   } catch (error) {
-    console.error("[DATE_UTILS] Unexpected error during week initialization:", error);
     return false;
   }
 };

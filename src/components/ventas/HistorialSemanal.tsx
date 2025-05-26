@@ -21,8 +21,33 @@ import { DeleteRecordButton } from '@/components/admin/DeleteRecordButton';
 
 import { useAuth } from '@/hooks/use-auth';
 
+// Define the new interface for individual historical items
+interface HistorialItemData {
+  id: string;
+  semana: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  leads: {
+    leads_pub_em: number;
+    leads_pub_cl: number;
+    leads_frio_em: number;
+    leads_frio_cl: number;
+    ventas_cerradas: number;
+    leads_google_ads?: number;
+    contactos_frio_cl?: number;
+    contactos_frio_em?: number;
+  };
+  ventasDetalle: Array<{
+    id: string;
+    cliente: string;
+    ubicacion: string;
+    tipo_servicio: 'PXR' | 'HH' | 'OTRO';
+    costo_unitario: number;
+    total_vacs: number;
+  }>;
+}
+
 interface HistorialSemanalProps {
-  historialData?: any[];
   onExportCSV?: () => void;
   currentIndex?: number;
   onPrevPage?: () => void;
@@ -31,13 +56,11 @@ interface HistorialSemanalProps {
   onDeleteSuccess?: () => void;
   loading?: boolean;
   onExportSingleWeek?: (id: string) => void;
-  // Añadir propiedades que están siendo usadas en VentasPage.tsx
-  historial?: any[];
+  historial?: HistorialItemData[]; // Updated type
   onDataChange?: () => Promise<void>;
 }
 
 export const HistorialSemanal = ({ 
-  historialData = [], 
   onExportCSV = () => {}, 
   currentIndex = 0, 
   onPrevPage = () => {}, 
@@ -46,11 +69,11 @@ export const HistorialSemanal = ({
   onDeleteSuccess = () => {},
   loading = false,
   onExportSingleWeek = () => {},
-  historial = [],
+  historial = [], // Default to empty array
   onDataChange = async () => {}
 }: HistorialSemanalProps) => {
-  // Usar historial si está presente, de lo contrario usar historialData
-  const dataToDisplay = historial.length > 0 ? historial : historialData;
+  // Use the historial prop directly
+  const dataToDisplay = historial;
   const { userRole } = useAuth();
   const isAdmin = userRole === 'admin';
   
@@ -94,14 +117,14 @@ export const HistorialSemanal = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dataToDisplay.map((item) => (
+                {dataToDisplay.map((item: HistorialItemData) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.semana}</TableCell>
-                    <TableCell className="text-right">{item.leads?.leads_pub_em || item.leads_pub_em}</TableCell>
-                    <TableCell className="text-right">{item.leads?.leads_pub_cl || item.leads_pub_cl}</TableCell>
-                    <TableCell className="text-right">{item.leads?.leads_frio_em || item.leads_frio_em}</TableCell>
-                    <TableCell className="text-right">{item.leads?.leads_frio_cl || item.leads_frio_cl}</TableCell>
-                    <TableCell className="text-right">{item.leads?.ventas_cerradas || item.ventas_cerradas}</TableCell>
+                    <TableCell className="text-right">{item.leads.leads_pub_em}</TableCell>
+                    <TableCell className="text-right">{item.leads.leads_pub_cl}</TableCell>
+                    <TableCell className="text-right">{item.leads.leads_frio_em}</TableCell>
+                    <TableCell className="text-right">{item.leads.leads_frio_cl}</TableCell>
+                    <TableCell className="text-right">{item.leads.ventas_cerradas}</TableCell>
                     <TableCell className="text-right">
                       {isAdmin && (
                         <div className="flex justify-end gap-2">

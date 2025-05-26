@@ -43,20 +43,6 @@ const PxrCerradosPage = () => {
   // Obtener información del usuario actual y sus permisos
   const { user, isDavila, isAdmin, hasPxrAccess } = useAuth();
   
-  // Añadir console logs para debugging
-  useEffect(() => {
-    console.log("[PXR_PAGE] Estado inicial:", {
-      weeksDataLength: weeksData.length,
-      currentWeekIndex,
-      currentWeekData: currentWeekData ? {
-        semana: currentWeekData.semana,
-        id: currentWeekData.id
-      } : null,
-      loading,
-      error
-    });
-  }, [weeksData, currentWeekIndex, currentWeekData, loading, error]);
-  
   // Transformar el objeto user al formato esperado por AppShell
   const appShellUser = user ? {
     role: user.role || user.user_metadata?.role || 'user', // Ensure role is defined
@@ -77,7 +63,6 @@ const PxrCerradosPage = () => {
   // Verificar si hay datos antes de renderizar
   useEffect(() => {
     if (!loading && weeksData.length === 0) {
-      console.log("[PXR_PAGE] No hay datos de semanas disponibles. Intentando cargar nuevamente...");
       fetchPxrCerradosData();
     }
   }, [loading, weeksData, fetchPxrCerradosData]);

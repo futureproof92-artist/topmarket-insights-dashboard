@@ -60,7 +60,6 @@ export interface VentaDetalle {
 }
 
 const VentasPage = () => {
-  console.log("[VENTAS_DEBUG] Inicializando VentasPage");
   const {
     user: authUser,
     userRole,
@@ -110,6 +109,8 @@ const VentasPage = () => {
   const [historialSemanas, setHistorialSemanas] = useState<{
     id: string;
     semana: string;
+    fecha_inicio: string;
+    fecha_fin: string;
     leads: LeadsData;
     ventasDetalle: VentaDetalle[];
   }[]>([]);
@@ -120,7 +121,6 @@ const VentasPage = () => {
 
   // Efecto para cargar el usuario y configurar la interfaz inicial
   useEffect(() => {
-    console.log("[VENTAS_DEBUG] useEffect para cargar usuario");
 
     // Usar el usuario de AuthContext si está disponible
     if (authUser && !authLoading) {
@@ -128,7 +128,6 @@ const VentasPage = () => {
         role: userRole || 'user',
         email: authUser.email || ''
       };
-      console.log("[VENTAS_DEBUG] Estableciendo usuario desde AuthContext:", userData);
       setUser(userData);
 
       // Verificar si es admin
@@ -139,11 +138,9 @@ const VentasPage = () => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        console.log("[VENTAS_DEBUG] Estableciendo usuario desde localStorage:", parsedUser);
         setUser(parsedUser);
         setIsAdmin(parsedUser.role === 'admin' || parsedUser.email?.includes('sergio.t@topmarket.com.mx'));
       } else {
-        console.log("[VENTAS_DEBUG] ⚠️ No se encontró usuario en localStorage ni en AuthContext");
       }
     }
     loadHistorialSemanas();
@@ -206,6 +203,8 @@ const VentasPage = () => {
         return {
           id: semana.id,
           semana: semana.semana,
+          fecha_inicio: semana.fecha_inicio,
+          fecha_fin: semana.fecha_fin,
           leads: {
             leads_pub_em: semana.leads_pub_em || 0,
             leads_pub_cl: semana.leads_pub_cl || 0,
@@ -401,11 +400,6 @@ const VentasPage = () => {
         throw searchError;
       }
 
-      // Obtener el usuario actual para registrar quién realiza los cambios
-      const storedUser = localStorage.getItem('user');
-      const currentUser = storedUser ? JSON.parse(storedUser) : null;
-      console.log("Usuario actual realizando guardado:", currentUser);
-
       // Verificar la validez de la sesión antes de continuar
       console.log("Estado de sesión al guardar:", session ? "Activa con token: " + session.access_token.substring(0, 10) + "..." : "No hay sesión");
       let historial_id;
@@ -475,44 +469,48 @@ const VentasPage = () => {
         historial_id = newSemana.id;
       }
 
-      // Eliminar ventas detalle anteriores para esta semana
-      if (ventasDetalle.length > 0) {
+      // Note: The following delete and insert operations for ventasDetalle are not atomic.
+      if (historial_id) {
+        // Siempre eliminar ventas detalle existentes para esta semana
         console.log("Eliminando ventas detalle existentes para historial_id:", historial_id);
-        
-        const {
-          error: deleteError
-        } = await supabase.from('ventas_detalle').delete().eq('historial_id', historial_id);
-        
+        const { error: deleteError } = await supabase
+          .from('ventas_detalle')
+          .delete()
+          .eq('historial_id', historial_id);
+
         if (deleteError) {
           console.error("Error al eliminar ventas detalle:", deleteError);
           console.log("Detalles del error:", JSON.stringify(deleteError));
           throw deleteError;
         } else {
-          console.log("Ventas detalle anteriores eliminadas exitosamente");
+          console.log("Ventas detalle anteriores eliminadas exitosamente o no existían.");
         }
 
-        // Guardar nuevas ventas detalle
-        const ventasParaGuardar = ventasDetalle.map(venta => ({
-          historial_id,
-          cliente: venta.cliente,
-          ubicacion: venta.ubicacion,
-          tipo_servicio: venta.tipo_servicio,
-          costo_unitario: venta.costo_unitario,
-          total_vacs: venta.total_vacs
-        }));
-        
-        console.log("Guardando ventas detalle:", ventasParaGuardar);
-        
-        const {
-          error: insertVentasError
-        } = await supabase.from('ventas_detalle').insert(ventasParaGuardar);
-        
-        if (insertVentasError) {
-          console.error("Error al insertar ventas detalle:", insertVentasError);
-          console.log("Detalles del error:", JSON.stringify(insertVentasError));
-          throw insertVentasError;
+        // Si hay nuevas ventasDetalle en el estado de la UI, guardarlas
+        if (ventasDetalle.length > 0) {
+          const ventasParaGuardar = ventasDetalle.map(venta => ({
+            historial_id,
+            cliente: venta.cliente,
+            ubicacion: venta.ubicacion,
+            tipo_servicio: venta.tipo_servicio,
+            costo_unitario: venta.costo_unitario,
+            total_vacs: venta.total_vacs
+          }));
+
+          console.log("Guardando nuevas ventas detalle:", ventasParaGuardar);
+          const { error: insertVentasError } = await supabase
+            .from('ventas_detalle')
+            .insert(ventasParaGuardar);
+
+          if (insertVentasError) {
+            console.error("Error al insertar ventas detalle:", insertVentasError);
+            console.log("Detalles del error:", JSON.stringify(insertVentasError));
+            throw insertVentasError;
+          } else {
+            console.log("Nuevas ventas detalle guardadas exitosamente");
+          }
         } else {
-          console.log("Ventas detalle guardadas exitosamente");
+          console.log("No hay nuevas ventas detalle para guardar.");
         }
       }
 
@@ -579,12 +577,10 @@ const VentasPage = () => {
   
   // Renderizado condicionado según la carga de autenticación
   if (authLoading) {
-    console.log("[VENTAS_DEBUG] Mostrando pantalla de carga debido a authLoading:", authLoading);
     return <div>Loading...</div>;
   }
   
   if (!user) {
-    console.log("[VENTAS_DEBUG] No hay usuario establecido después de cargar");
     return <div>No user found</div>;
   }
   
