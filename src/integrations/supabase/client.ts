@@ -48,26 +48,31 @@ export const checkUserAccess = async () => {
     }
     
     // IMPORTANT: Only use the email from JWT to determine permissions
-    // Remove any query to auth.users that could cause permission errors
+    // This is now consistent with our RLS policies
     const userEmail = session.user.email?.toLowerCase() || '';
     
-    // Simplified verification based ONLY on email (which is in the JWT)
+    // Simplified verification based ONLY on email patterns (matching RLS policies)
     const isKarla = userEmail.includes('reclutamiento') || 
                     userEmail.includes('karla.casillas');
                     
     const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
     
-    console.log("[ACCESS_CHECK] Verificación de acceso por JWT:", { 
+    const isDavila = userEmail.includes('rys_cdmx') || 
+                    userEmail.includes('davila');
+    
+    console.log("[ACCESS_CHECK] Verificación de acceso por JWT (RLS compatible):", { 
       email: userEmail, 
       isKarla, 
       isAdmin,
+      isDavila,
       sessionValid: !!session.access_token
     });
     
     return {
-      accessGranted: isKarla || isAdmin,
+      accessGranted: isKarla || isAdmin || isDavila,
       isKarla,
       isAdmin,
+      isDavila,
       session
     };
   } catch (error) {

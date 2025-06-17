@@ -77,12 +77,15 @@ export type Database = {
       }
       historial_semanal: {
         Row: {
+          contactos_frio_cl: number | null
+          contactos_frio_em: number | null
           created_at: string | null
           fecha_fin: string
           fecha_inicio: string
           id: string
           leads_frio_cl: number | null
           leads_frio_em: number | null
+          leads_google_ads: number | null
           leads_pub_cl: number | null
           leads_pub_em: number | null
           semana: string
@@ -90,12 +93,15 @@ export type Database = {
           ventas_cerradas: number | null
         }
         Insert: {
+          contactos_frio_cl?: number | null
+          contactos_frio_em?: number | null
           created_at?: string | null
           fecha_fin: string
           fecha_inicio: string
           id?: string
           leads_frio_cl?: number | null
           leads_frio_em?: number | null
+          leads_google_ads?: number | null
           leads_pub_cl?: number | null
           leads_pub_em?: number | null
           semana: string
@@ -103,12 +109,15 @@ export type Database = {
           ventas_cerradas?: number | null
         }
         Update: {
+          contactos_frio_cl?: number | null
+          contactos_frio_em?: number | null
           created_at?: string | null
           fecha_fin?: string
           fecha_inicio?: string
           id?: string
           leads_frio_cl?: number | null
           leads_frio_em?: number | null
+          leads_google_ads?: number | null
           leads_pub_cl?: number | null
           leads_pub_em?: number | null
           semana?: string

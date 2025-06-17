@@ -33,12 +33,13 @@ export const useRecruitmentData = () => {
     setError(null);
     
     try {
-      console.log("[RECRUITMENT_HOOK] Loading recruitment data");
+      console.log("[RECRUITMENT_HOOK] Loading recruitment data with RLS");
       
       // First check if we need to initialize weeks
       await initWeeks2025();
       
-      // Get recruitment data from Supabase
+      // Get recruitment data from Supabase with RLS enabled
+      // Las políticas RLS ahora manejan automáticamente el acceso
       const { data: existingData, error } = await supabase
         .from('reclutamiento')
         .select('id, semana, semana_inicio, semana_fin, reclutamientos_confirmados, freelancers_confirmados, created_at, updated_at')
@@ -46,12 +47,23 @@ export const useRecruitmentData = () => {
       
       if (error) {
         console.error('[RECRUITMENT_HOOK] Error fetching recruitment data:', error);
-        setError(`Error cargando datos: ${error.message}`);
-        toast({
-          title: "Error",
-          description: "No se pudieron cargar los datos de reclutamiento",
-          variant: "destructive"
-        });
+        
+        // Mensaje más específico para errores de RLS
+        if (error.message.includes('row-level security policy')) {
+          setError('Sin permisos para acceder a los datos de reclutamiento');
+          toast({
+            title: "Sin permisos",
+            description: "No tienes permisos para acceder a los datos de reclutamiento",
+            variant: "destructive"
+          });
+        } else {
+          setError(`Error cargando datos: ${error.message}`);
+          toast({
+            title: "Error",
+            description: "No se pudieron cargar los datos de reclutamiento",
+            variant: "destructive"
+          });
+        }
         return;
       }
       
@@ -126,7 +138,7 @@ export const useRecruitmentData = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
-  // Save recruitment data
+  // Save recruitment data with RLS compatibility
   const saveRecruitmentData = async () => {
     if (!currentWeekData?.id) {
       toast({
@@ -155,15 +167,16 @@ export const useRecruitmentData = () => {
     }
     
     try {
-      console.log("[RECRUITMENT_HOOK] Updating record:", currentWeekData.id);
+      console.log("[RECRUITMENT_HOOK] Updating record with RLS:", currentWeekData.id);
       
-      // Prepare the update object - only include the fields we want to update
+      // Prepare the update object - RLS policies will handle access control
       const updateData = {
         reclutamientos_confirmados: reclutamientosValue,
         freelancers_confirmados: freelancersValue
       };
       
-      // Update data using update() with eq() filter instead of upsert with id inside the object
+      // Update data using update() with eq() filter
+      // Las políticas RLS ahora manejan automáticamente los permisos
       const { data, error: updateError } = await supabase
         .from('reclutamiento')
         .update(updateData)
@@ -174,9 +187,9 @@ export const useRecruitmentData = () => {
         console.error('[RECRUITMENT_HOOK] Error updating recruitment data:', updateError);
         
         let errorMessage = "No se pudieron guardar los datos";
-        if (updateError.message.includes("permission denied")) {
-          setError("Error de permisos: " + updateError.message);
-          errorMessage = "Error de permisos. Solo Karla y el administrador pueden actualizar datos.";
+        if (updateError.message.includes("row-level security policy")) {
+          setError("Sin permisos para actualizar datos de reclutamiento");
+          errorMessage = "Sin permisos. Solo Karla y el administrador pueden actualizar datos.";
         } else {
           setError(`Error: ${updateError.message}`);
         }

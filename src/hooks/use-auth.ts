@@ -6,16 +6,17 @@ import { useAuth as useOriginalAuth } from '@/context/AuthContext';
 export const useAuth = () => {
   const authContext = useOriginalAuth();
   
-  // Obtener el email para verificaciones directas
+  // Obtener el email para verificaciones directas (compatible con RLS)
   const userEmail = authContext.user?.email?.toLowerCase() || '';
   
-  // Debug
-  console.log("[AUTH_HOOK] Usuario actual:", { 
+  // Debug - mostrar información de usuario compatible con RLS
+  console.log("[AUTH_HOOK] Usuario actual (RLS compatible):", { 
     email: userEmail, 
     role: authContext.user?.role || authContext.user?.user_metadata?.role || 'user'
   });
   
   // Verificación mejorada de permisos basada en el email directamente
+  // IMPORTANTE: Estos patrones deben coincidir EXACTAMENTE con las políticas RLS
   const isKarla = userEmail.includes('reclutamiento') || 
                  userEmail.includes('karla.casillas');
   
