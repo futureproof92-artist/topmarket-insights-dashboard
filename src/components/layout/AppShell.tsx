@@ -68,7 +68,7 @@ export const AppShell = ({ children, user: propUser }: AppShellProps) => {
       
       const userData = { email, role };
       setUser(userData);
-      console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde authUser:", userData);
+      console.log("[AUTH_DEBUG] AppShell: Usuario establecido desde authUser (RLS compatible):", userData);
     } 
     // Si no hay usuario en el contexto pero hay props, usarlos temporalmente
     else if (propUser) {

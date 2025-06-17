@@ -29,23 +29,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isSessionValid, setIsSessionValid] = useState(false);
   const { toast } = useToast();
 
-  // Determine role based on the email
+  // Determine role based on the email (ACTUALIZADO para coincidir con RLS)
   const determineRoleFromEmail = (email: string): string => {
     if (!email) return 'user';
     
     email = email.toLowerCase();
+    
+    // Admin tiene prioridad máxima
     if (email.includes('sergio.t@topmarket.com.mx')) {
       return 'admin';
-    } else if (email.includes('dcomercial')) {
-      return 'evelyn';
-    } else if (email.includes('rys_cdmx')) {
-      return 'davila';
-    } else if (email.includes('rlaboral')) {
-      return 'lilia';
-    } else if (email.includes('administracion')) {
-      return 'cobranza';
-    } else if (email.includes('reclutamiento')) {
+    } else if (email.includes('reclutamiento') || email.includes('karla.casillas')) {
       return 'karla';
+    } else if (email.includes('rys_cdmx') || email.includes('davila')) {
+      return 'davila';
+    } else if (email.includes('rlaboral') || email.includes('lilia')) {
+      return 'lilia';
+    } else if (email.includes('administracion') || email.includes('cobranza')) {
+      return 'cobranza';
     }
     return 'user';
   };
@@ -80,9 +80,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Log JWT token for diagnostic
     if (currentSession) {
-      const createdAt = new Date().toLocaleString(); // Fallback for created_at
+      const createdAt = new Date().toLocaleString();
       console.log("[AUTH_DEBUG] Token JWT disponible:", !!currentSession.access_token);
-      console.log("[AUTH_DEBUG] Estado del token:", {
+      console.log("[AUTH_DEBUG] Estado del token (RLS compatible):", {
+        email: currentUser.email,
+        role: role,
         emitido: createdAt,
         expira: new Date(currentSession.expires_at * 1000).toLocaleString(),
         tiempoRestante: Math.round((currentSession.expires_at - Date.now()/1000)/60) + " minutos"
@@ -113,8 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const tokenExpiration = session.expires_at * 1000;
     const timeRemaining = Math.round((tokenExpiration - Date.now())/60000);
     
-    console.log("[AUTH_DEBUG] Validación de sesión JWT:", {
+    console.log("[AUTH_DEBUG] Validación de sesión JWT (RLS compatible):", {
       userId: user.id,
+      email: user.email,
+      role: userRole,
       tokenActivo: !!session.access_token,
       expira: new Date(tokenExpiration).toLocaleString(),
       tiempoRestante: timeRemaining + " minutos",
@@ -129,7 +133,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // If we are less than 10 minutes from expiring, we warn but it's still valid
     if (timeRemaining < 10) {
       console.log("[AUTH_DEBUG] ⚠️ Token JWT a punto de expirar");
-      // Session is still valid, just warning
     }
     
     setIsSessionValid(true);
@@ -263,7 +266,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("[AUTH_DEBUG] ✅ Sesión establecida correctamente");
       
-      // Determine user role
+      // Determine user role (ACTUALIZADO para coincidir con RLS)
       const role = data.user.user_metadata?.role || determineRoleFromEmail(email);
       
       // Update user metadata with role (important for JWT claims)
@@ -271,7 +274,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: { role }
       });
       
-      console.log("[AUTH_DEBUG] Role actualizado en los metadatos del usuario:", role);
+      console.log("[AUTH_DEBUG] Role actualizado en los metadatos del usuario (RLS compatible):", role);
       
       // Save information in localStorage for compatibility
       const userData = {
@@ -288,7 +291,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       toast({
         title: "Inicio de sesión exitoso",
-        description: `Bienvenido, ${email}!`,
+        description: `Bienvenido, ${email}! Rol: ${role}`,
       });
       
       return { 

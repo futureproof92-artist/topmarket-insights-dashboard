@@ -51,28 +51,38 @@ export const checkUserAccess = async () => {
     // This is now consistent with our RLS policies
     const userEmail = session.user.email?.toLowerCase() || '';
     
-    // Simplified verification based ONLY on email patterns (matching RLS policies)
+    // Verificación simplificada basada ÚNICAMENTE en patrones de email (coincidiendo con políticas RLS)
+    const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
+    
     const isKarla = userEmail.includes('reclutamiento') || 
                     userEmail.includes('karla.casillas');
                     
-    const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
-    
     const isDavila = userEmail.includes('rys_cdmx') || 
                     userEmail.includes('davila');
     
+    const isLilia = userEmail.includes('rlaboral') ||
+                   userEmail.includes('lilia');
+    
+    const isCobranza = userEmail.includes('administracion') ||
+                      userEmail.includes('cobranza');
+    
     console.log("[ACCESS_CHECK] Verificación de acceso por JWT (RLS compatible):", { 
       email: userEmail, 
-      isKarla, 
       isAdmin,
+      isKarla, 
       isDavila,
+      isLilia,
+      isCobranza,
       sessionValid: !!session.access_token
     });
     
     return {
-      accessGranted: isKarla || isAdmin || isDavila,
-      isKarla,
+      accessGranted: isAdmin || isKarla || isDavila || isLilia || isCobranza,
       isAdmin,
+      isKarla,
       isDavila,
+      isLilia,
+      isCobranza,
       session
     };
   } catch (error) {

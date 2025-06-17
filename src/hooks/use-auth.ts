@@ -17,24 +17,36 @@ export const useAuth = () => {
   
   // Verificación mejorada de permisos basada en el email directamente
   // IMPORTANTE: Estos patrones deben coincidir EXACTAMENTE con las políticas RLS
+  const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
+  
   const isKarla = userEmail.includes('reclutamiento') || 
                  userEmail.includes('karla.casillas');
   
   const isDavila = userEmail.includes('rys_cdmx') || 
                   userEmail.includes('davila');
   
-  const isAdmin = userEmail.includes('sergio.t@topmarket.com.mx');
+  const isLilia = userEmail.includes('rlaboral') ||
+                 userEmail.includes('lilia');
+  
+  const isCobranza = userEmail.includes('administracion') ||
+                    userEmail.includes('cobranza');
   
   // Verificar acceso específico a secciones
   const hasReclutamientoAccess = isKarla || isAdmin;
   const hasPxrAccess = isDavila || isAdmin;
+  const hasHhAccess = isLilia || isAdmin;
+  const hasCobranzaAccess = isCobranza || isAdmin;
   
   return {
     ...authContext,
-    isKarla,
-    isDavila,
     isAdmin,
+    isKarla,
+    isDavila, 
+    isLilia,
+    isCobranza,
     hasReclutamientoAccess,
-    hasPxrAccess
+    hasPxrAccess,
+    hasHhAccess,
+    hasCobranzaAccess
   };
 };
